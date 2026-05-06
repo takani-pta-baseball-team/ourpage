@@ -413,6 +413,24 @@
           "result": "flyOut",
           "rbi": 0,
           "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 8,
+          "result": "flyOut",
+          "rbi": 0,
+          "pitcherId": "m_moth46wbgufq"
+        },
+        {
+          "inning": 8,
+          "result": "groundOut",
+          "rbi": 0,
+          "pitcherId": "m_moth46wbgufq"
+        },
+        {
+          "inning": 8,
+          "result": "strikeout",
+          "rbi": 0,
+          "pitcherId": "m_moth46wbgufq"
         }
       ]
     }
