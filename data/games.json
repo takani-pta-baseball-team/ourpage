@@ -149,6 +149,12 @@
           "batterId": "m_motkxo2u89qy",
           "result": "single",
           "rbi": 0
+        },
+        {
+          "inning": 6,
+          "batterId": "m_motkwoito899",
+          "result": "triple",
+          "rbi": 0
         }
       ],
       "oppPlays": [
