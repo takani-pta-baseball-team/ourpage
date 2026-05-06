@@ -1,20 +1,3 @@
 {
-  "attendance": {
-    "e_moth1fgzvznw": {
-      "m_moth46wbgufq": "yes",
-      "m_motkvtaiy9nu": "yes",
-      "m_motkv9ascdpx": "yes",
-      "m_motkwzcfqnxm": "yes",
-      "m_motkwoito899": "yes",
-      "m_motkv4fnrkmz": "yes",
-      "m_motkxf6edadf": "yes",
-      "m_motkxo2u89qy": "yes",
-      "m_motkx56twsn6": "yes",
-      "m_motkvjfh8tbi": "yes",
-      "m_motky0ubmmjz": "no",
-      "m_motkyugdfake": "yes",
-      "m_motkxum4r56j": "no",
-      "m_motkvdpsv10y": "yes"
-    }
-  }
+  "attendance": {}
 }
