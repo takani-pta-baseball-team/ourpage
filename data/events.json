@@ -1,14 +1,3 @@
 {
-  "events": [
-    {
-      "id": "e_motobr6u8ag9",
-      "date": "2026-05-10",
-      "startTime": "12:45",
-      "endTime": "14:15",
-      "type": "試合",
-      "location": "石神井公園A",
-      "description": "高二出発１２時",
-      "gameId": "g_motomfaapl43"
-    }
-  ]
+  "events": []
 }
