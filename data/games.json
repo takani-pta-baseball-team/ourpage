@@ -9,9 +9,11 @@
       "isHome": false,
       "innings": [],
       "location": "石神井公園A",
-      "mvpId": null,
+      "mvpId": "m_motkwoito899",
       "highlights": "",
-      "photos": [],
+      "photos": [
+        "images/games/g_motowgfpbpio/1778050936093.jpg"
+      ],
       "eventId": "e_motovi61ld52",
       "ourLineup": [
         {
@@ -199,7 +201,8 @@
           "pitcherId": "m_motkwoito899"
         }
       ],
-      "result": "draw"
+      "result": "draw",
+      "finalized": true
     }
   ]
 }
