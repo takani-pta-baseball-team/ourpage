@@ -5,8 +5,8 @@
       "date": "2026-05-10",
       "opponent": "桃一",
       "ourScore": 3,
-      "theirScore": 0,
-      "result": "win",
+      "theirScore": 3,
+      "result": "draw",
       "isHome": false,
       "innings": [
         {
@@ -117,6 +117,60 @@
           "batterId": "m_motjxi3p1xyf",
           "result": "strikeout",
           "rbi": 0
+        },
+        {
+          "inning": 2,
+          "batterId": "m_motjwv3tufud",
+          "result": "flyOut",
+          "rbi": 0
+        },
+        {
+          "inning": 2,
+          "batterId": "m_moth46wbgufq",
+          "result": "groundOut",
+          "rbi": 0
+        },
+        {
+          "inning": 2,
+          "batterId": "m_motjw1nn8jkc",
+          "result": "strikeout",
+          "rbi": 0
+        },
+        {
+          "inning": 3,
+          "batterId": "m_motjvwc1pwxc",
+          "result": "strikeout",
+          "rbi": 0
+        },
+        {
+          "inning": 3,
+          "batterId": "m_motjwag167wu",
+          "result": "flyOut",
+          "rbi": 0
+        },
+        {
+          "inning": 3,
+          "batterId": "m_motjwpmx3hrh",
+          "result": "groundOut",
+          "rbi": 0
+        },
+        {
+          "inning": 4,
+          "batterId": "m_motjx3yyzlq5",
+          "result": "flyOut",
+          "rbi": 0
+        },
+        {
+          "inning": 4,
+          "batterId": "m_motjwfehvqfi",
+          "result": "groundOut",
+          "rbi": 0
+        },
+        {
+          "inning": 4,
+          "batterId": "m_motjxi3p1xyf",
+          "result": "strikeout",
+          "rbi": 0
         }
       ],
       "oppPlays": [
@@ -152,6 +206,78 @@
         },
         {
           "inning": 1,
+          "result": "strikeout",
+          "rbi": 0,
+          "pitcherId": "m_moth46wbgufq"
+        },
+        {
+          "inning": 2,
+          "result": "double",
+          "rbi": 0,
+          "pitcherId": "m_moth46wbgufq"
+        },
+        {
+          "inning": 2,
+          "result": "hbp",
+          "rbi": 0,
+          "pitcherId": "m_moth46wbgufq"
+        },
+        {
+          "inning": 2,
+          "result": "homeRun",
+          "rbi": 3,
+          "pitcherId": "m_moth46wbgufq"
+        },
+        {
+          "inning": 2,
+          "result": "flyOut",
+          "rbi": 0,
+          "pitcherId": "m_moth46wbgufq"
+        },
+        {
+          "inning": 2,
+          "result": "groundOut",
+          "rbi": 0,
+          "pitcherId": "m_moth46wbgufq"
+        },
+        {
+          "inning": 2,
+          "result": "strikeout",
+          "rbi": 0,
+          "pitcherId": "m_moth46wbgufq"
+        },
+        {
+          "inning": 3,
+          "result": "flyOut",
+          "rbi": 0,
+          "pitcherId": "m_moth46wbgufq"
+        },
+        {
+          "inning": 3,
+          "result": "groundOut",
+          "rbi": 0,
+          "pitcherId": "m_moth46wbgufq"
+        },
+        {
+          "inning": 3,
+          "result": "strikeout",
+          "rbi": 0,
+          "pitcherId": "m_moth46wbgufq"
+        },
+        {
+          "inning": 4,
+          "result": "flyOut",
+          "rbi": 0,
+          "pitcherId": "m_moth46wbgufq"
+        },
+        {
+          "inning": 4,
+          "result": "groundOut",
+          "rbi": 0,
+          "pitcherId": "m_moth46wbgufq"
+        },
+        {
+          "inning": 4,
           "result": "strikeout",
           "rbi": 0,
           "pitcherId": "m_moth46wbgufq"
