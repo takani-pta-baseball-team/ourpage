@@ -847,10 +847,12 @@ function openPlaysDialog(gameId) {
   let pendingResult = null;
   let pendingRBI = 0;
   let manualInning = null;
+  let offenseEntryCollapsed = false;
   // 守備タブの状態
   let pendingDefResult = null;
   let pendingDefRBI = 0;
   let manualDefInning = null;
+  let defenseEntryCollapsed = false;
   let currentPitcherId = oppPlays.length > 0
     ? oppPlays[oppPlays.length - 1].pitcherId
     : null;
@@ -1041,7 +1043,10 @@ function openPlaysDialog(gameId) {
       }).join('');
 
     tabEl.innerHTML = `
-      <div class="play-entry">
+      <button type="button" class="entry-toggle" id="entry-toggle">
+        ${offenseEntryCollapsed ? `▼ 入力エリアを開く（${inning}回・${batterIdx + 1}番 ${batter ? batter.name : '?'}）` : '▲ 入力エリアを閉じて履歴を広げる'}
+      </button>
+      <div class="play-entry ${offenseEntryCollapsed ? 'collapsed' : ''}">
         <div class="play-state">
           <div class="play-state-row">
             <span class="play-state-label">${inning}回</span>
@@ -1078,6 +1083,10 @@ function openPlaysDialog(gameId) {
         <div class="plays-list">${playsList}</div>
       </div>
     `;
+    document.getElementById('entry-toggle').addEventListener('click', () => {
+      offenseEntryCollapsed = !offenseEntryCollapsed;
+      renderOffenseTab();
+    });
 
     tabEl.querySelectorAll('.result-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -1176,7 +1185,10 @@ function openPlaysDialog(gameId) {
       }).join('');
 
     tabEl.innerHTML = `
-      <div class="play-entry">
+      <button type="button" class="entry-toggle" id="def-entry-toggle">
+        ${defenseEntryCollapsed ? `▼ 入力エリアを開く（${inning}回・投手:${pitcher ? pitcher.name : '未設定'}）` : '▲ 入力エリアを閉じて履歴を広げる'}
+      </button>
+      <div class="play-entry ${defenseEntryCollapsed ? 'collapsed' : ''}">
         <div class="play-state">
           <div class="play-state-row">
             <span class="play-state-label">${inning}回</span>
@@ -1216,6 +1228,10 @@ function openPlaysDialog(gameId) {
         <div class="plays-list">${playsList}</div>
       </div>
     `;
+    document.getElementById('def-entry-toggle').addEventListener('click', () => {
+      defenseEntryCollapsed = !defenseEntryCollapsed;
+      renderDefenseTab();
+    });
 
     tabEl.querySelectorAll('.result-btn').forEach((btn) => {
       btn.addEventListener('click', () => {

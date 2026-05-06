@@ -791,11 +791,12 @@ table.scoreboard tr.us-row td:first-child {
 .plays-modal {
   max-width: 560px;
   width: 100%;
-  max-height: 92vh;
+  max-height: 96vh;
+  height: 96vh;
   display: flex;
   flex-direction: column;
   overflow: hidden; /* override .modal の overflow:auto。中身でスクロール */
-  padding: 16px;
+  padding: 14px;
 }
 .plays-modal > h3,
 .plays-modal > .card-meta,
@@ -838,6 +839,28 @@ table.scoreboard tr.us-row td:first-child {
 }
 .play-entry {
   flex-shrink: 0;
+}
+.play-entry.collapsed {
+  display: none;
+}
+.entry-toggle {
+  width: 100%;
+  background: #f6f8fa;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  margin-bottom: 8px;
+  text-align: left;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.entry-toggle:hover {
+  background: #eef4fb;
+  color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 .entry-bottom-bar {
   display: flex;
