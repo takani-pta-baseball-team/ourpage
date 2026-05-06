@@ -502,12 +502,48 @@ function openPlaysDialog(gameId) {
   let pendingDefRBI = 0;
   let manualDefInning = null;
   let defenseEntryCollapsed = false;
-  let currentPitcherId = oppPlays.length > 0
-    ? oppPlays[oppPlays.length - 1].pitcherId
-    : null;
   let finalized = !!game.finalized;
 
   const memberById = (id) => membersState.members.find((m) => m.id === id);
+
+  // 「投手」ポジションの選手を守備投手として自動判定
+  // 居なければ最終 oppPlay の投手にフォールバック（旧データ互換）
+  function getDefensivePitcher() {
+    const pitcherEntry = lineup.find((e) => e.position === '投手');
+    if (pitcherEntry) return pitcherEntry.memberId;
+    if (oppPlays.length > 0) {
+      const last = oppPlays[oppPlays.length - 1];
+      if (last.pitcherId) return last.pitcherId;
+    }
+    return null;
+  }
+
+  // 投手交代: 新しい投手を立てる。打順内の選手なら入れ替え、外ならスタメンと入れ替え。
+  function changePitcher(newMemberId) {
+    const oldPitcherIdx = lineup.findIndex((e) => e.position === '投手');
+    if (!newMemberId) {
+      if (oldPitcherIdx !== -1) lineup[oldPitcherIdx].position = '';
+      return;
+    }
+    const newPlayerIdx = lineup.findIndex((e) => e.memberId === newMemberId);
+    if (newPlayerIdx === -1) {
+      // 打順未登録の選手 → 旧投手と入れ替え（ベンチの選手が登板）
+      if (oldPitcherIdx !== -1) {
+        lineup[oldPitcherIdx] = { memberId: newMemberId, position: '投手' };
+      } else {
+        lineup.push({ memberId: newMemberId, position: '投手' });
+      }
+    } else {
+      // 打順内の選手 → ポジションを入れ替え（守備位置の変更）
+      if (oldPitcherIdx !== -1 && oldPitcherIdx !== newPlayerIdx) {
+        const newPlayerOldPos = lineup[newPlayerIdx].position;
+        lineup[oldPitcherIdx].position = newPlayerOldPos || '';
+        lineup[newPlayerIdx].position = '投手';
+      } else {
+        lineup[newPlayerIdx].position = '投手';
+      }
+    }
+  }
 
   const html = `
     <div class="modal-backdrop open" id="plays-modal">
@@ -542,6 +578,10 @@ function openPlaysDialog(gameId) {
     document.getElementById('tab-lineup').style.display = tab === 'lineup' ? 'block' : 'none';
     document.getElementById('tab-offense').style.display = tab === 'offense' ? 'flex' : 'none';
     document.getElementById('tab-defense').style.display = tab === 'defense' ? 'flex' : 'none';
+    // 切替先タブを最新状態で再描画（打順変更が他タブに即反映されるため）
+    if (tab === 'lineup') renderLineupTab();
+    else if (tab === 'offense') renderOffenseTab();
+    else if (tab === 'defense') renderDefenseTab();
   }
   modal.querySelectorAll('.play-tab').forEach((t) => {
     t.addEventListener('click', () => setTab(t.dataset.tab));
@@ -649,7 +689,15 @@ function openPlaysDialog(gameId) {
     tabEl.querySelectorAll('[data-pos-select]').forEach((sel) => {
       sel.addEventListener('change', () => {
         const i = Number(sel.dataset.posSelect);
-        lineup[i].position = sel.value;
+        const newPos = sel.value;
+        // 「投手」を選んだ場合、ほかの投手は自動で外す（同時に2人投手は不可）
+        if (newPos === '投手') {
+          lineup.forEach((e, idx) => {
+            if (idx !== i && e.position === '投手') e.position = '';
+          });
+        }
+        lineup[i].position = newPos;
+        renderLineupTab();
       });
     });
     tabEl.querySelectorAll('[data-add-member]').forEach((btn) => {
@@ -905,6 +953,7 @@ function openPlaysDialog(gameId) {
     const inning = currentDefInning();
     const outs = outsInInning(oppPlays, inning);
     const inningRuns = runsInInning(oppPlays, inning);
+    const currentPitcherId = getDefensivePitcher();
     const pitcher = currentPitcherId ? memberById(currentPitcherId) : null;
 
     const resultButtons = RESULT_TYPES.map((r) => `
@@ -1001,7 +1050,7 @@ function openPlaysDialog(gameId) {
         inning: inningRecorded,
         result: pendingDefResult,
         rbi: pendingDefRBI,
-        pitcherId: currentPitcherId || null,
+        pitcherId: getDefensivePitcher() || null,
       });
       pendingDefResult = null;
       pendingDefRBI = 0;
@@ -1029,8 +1078,11 @@ function openPlaysDialog(gameId) {
     });
     document.getElementById('change-pitcher').addEventListener('click', () => {
       openPitcherPicker((picked) => {
-        currentPitcherId = picked;
+        changePitcher(picked);
         renderDefenseTab();
+        renderLineupTab();
+        const newPitcher = picked ? memberById(picked) : null;
+        showToast(newPitcher ? `投手を ${newPitcher.name} に変更` : '投手なしに変更', 'success');
       });
     });
     tabEl.querySelectorAll('[data-defplay-del]').forEach((btn) => {
@@ -1064,10 +1116,14 @@ function openPlaysDialog(gameId) {
       if (na !== nb) return na - nb;
       return (a.name || '').localeCompare(b.name || '', 'ja');
     });
+    const currentPitcherId = getDefensivePitcher();
     const html = `
       <div class="play-edit-popup-backdrop" id="pitcher-picker">
         <div class="play-edit-popup">
           <h4>投手を選択</h4>
+          <p style="font-size:.75rem;color:var(--color-text-muted);margin:0 0 8px">
+            選択した選手の守備位置が「投手」になります。打順内で別ポジションだった場合は元の投手とポジションが入れ替わります。
+          </p>
           <div class="member-pool" style="max-height:300px;overflow:auto;display:flex;flex-direction:column">
             <button type="button" class="member-pool-btn ${!currentPitcherId ? 'active' : ''}" data-pick="">-- 投手なし --</button>
             ${sortedMembers.map((m) => `
