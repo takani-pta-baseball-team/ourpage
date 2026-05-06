@@ -39,6 +39,16 @@
       "location": "高井戸第二小学校 校庭",
       "description": "",
       "gameId": null
+    },
+    {
+      "id": "e_motpe85cenea",
+      "date": "2026-05-31",
+      "startTime": "07:00",
+      "endTime": "09:00",
+      "type": "練習",
+      "location": "高井戸第二小学校 校庭",
+      "description": "",
+      "gameId": null
     }
   ]
 }
