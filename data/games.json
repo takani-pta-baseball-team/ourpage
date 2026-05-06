@@ -81,6 +81,12 @@
           "batterId": "m_motkvjfh8tbi",
           "result": "flyOut",
           "rbi": 0
+        },
+        {
+          "inning": 2,
+          "batterId": "m_motkyugdfake",
+          "result": "otherOut",
+          "rbi": 0
         }
       ],
       "oppPlays": [
