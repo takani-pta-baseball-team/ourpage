@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#1f4e8c" />
   <title>高井戸第二小学校PTA野球部</title>
-  <link rel="stylesheet" href="css/style.css?v=8" />
+  <link rel="stylesheet" href="css/style.css?v=9" />
 </head>
 <body>
   <header class="app-header" id="app-header"></header>
@@ -17,6 +17,11 @@
     </div>
 
     <div class="slideshow" id="slideshow"></div>
+
+    <div class="card" id="upcoming-events-card" style="display:none">
+      <h3 class="card-title">📅 これからの予定</h3>
+      <ul id="upcoming-events-list" style="list-style:none;padding:0;margin:0"></ul>
+    </div>
 
     <div class="card">
       <h3 class="card-title">新メンバー募集中！</h3>
@@ -89,6 +94,56 @@
         onSuccess: () => { location.href = 'games.html'; }
       });
     });
+
+    // ========== これからの予定: 公開（ログイン不要） ==========
+    initUpcomingEvents();
+
+    async function initUpcomingEvents() {
+      const card = document.getElementById('upcoming-events-card');
+      const list = document.getElementById('upcoming-events-list');
+      try {
+        const res = await fetch('data/events.json', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const events = (data && data.events) || [];
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        const upcoming = events
+          .filter((e) => (e.date || '') >= todayStr)
+          .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+          .slice(0, 6);
+        if (upcoming.length === 0) return;
+        list.innerHTML = upcoming.map((e) => `
+          <li style="padding:10px 0;border-bottom:1px solid var(--color-border)">
+            <div style="font-weight:600;font-size:.95rem">
+              ${formatDate(e.date)}${e.startTime ? ` ${escapeText(e.startTime)}` : ''}${e.endTime ? `〜${escapeText(e.endTime)}` : ''}
+            </div>
+            <div style="font-size:.85rem;color:var(--color-text-muted);margin-top:2px">
+              <span style="display:inline-block;background:#eef4fb;color:var(--color-primary);padding:1px 8px;border-radius:10px;font-weight:600;font-size:.75rem;margin-right:6px">${escapeText(e.type || '予定')}</span>
+              📍 ${escapeText(e.location || '')}
+            </div>
+            ${e.description ? `<div style="font-size:.8rem;color:var(--color-text-muted);margin-top:4px;white-space:pre-wrap">${escapeText(e.description)}</div>` : ''}
+          </li>
+        `).join('');
+        // 最後の li の border を消す
+        const items = list.querySelectorAll('li');
+        if (items.length > 0) items[items.length - 1].style.borderBottom = 'none';
+        card.style.display = 'block';
+      } catch (e) {
+        // 取得失敗時はカード非表示のまま
+      }
+    }
+
+    function formatDate(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return iso;
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const wd = ['日', '月', '火', '水', '木', '金', '土'][d.getDay()];
+      return `${yyyy}/${mm}/${dd}(${wd})`;
+    }
 
     // ========== Slideshow: 試合写真を自動表示 ==========
     initSlideshow();

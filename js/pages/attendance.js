@@ -136,7 +136,7 @@ function renderEventCard(ev, isPast) {
         <span style="color:var(--color-warning)">△ ${counts.maybe}</span>
         <span style="color:var(--color-danger)">× ${counts.no}</span>
       </div>
-      <details ${isPast ? '' : 'open'}>
+      <details>
         <summary style="cursor:pointer;font-size:.85rem;color:var(--color-text-muted);margin-bottom:8px">出欠を見る・登録する</summary>
         ${memberRows}
       </details>
@@ -176,13 +176,25 @@ async function setAttendance(eventId, memberId, status) {
 function openAddEventDialog() {
   openEventDialog({
     id: '',
-    date: todayISO(),
-    startTime: '09:00',
-    endTime: '12:00',
+    date: nextSundayISO(),
+    startTime: '07:00',
+    endTime: '09:00',
     type: '練習',
     location: '高井戸第二小学校 校庭',
     description: '',
   }, false);
+}
+
+// 今日が日曜なら今日、それ以外は次の日曜
+function nextSundayISO() {
+  const d = new Date();
+  const dow = d.getDay(); // 0=Sun
+  const daysUntil = dow === 0 ? 0 : 7 - dow;
+  d.setDate(d.getDate() + daysUntil);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 function openEditEventDialog(id) {
