@@ -4,9 +4,9 @@
       "id": "g_motkzajgqf5f",
       "date": "2026-05-10",
       "opponent": "桃一",
-      "ourScore": 0,
+      "ourScore": 5,
       "theirScore": 0,
-      "result": "draw",
+      "result": "win",
       "isHome": false,
       "innings": [
         {
@@ -399,7 +399,7 @@
           "pitcherId": "m_moth46wbgufq"
         }
       ],
-      "finalized": true
+      "finalized": false
     }
   ]
 }
