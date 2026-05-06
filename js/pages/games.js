@@ -20,6 +20,7 @@ let gamesState = { games: [] };
 let gamesSha = null;
 let membersState = { members: [] };
 let eventsState = { events: [] };
+let eventsSha = null;
 let attendanceState = { attendance: {} };
 
 requireAuth(async () => {
@@ -40,8 +41,9 @@ async function loadMembers() {
 }
 
 async function loadEvents() {
-  const { data } = await fetchJSON(CONFIG.DATA_PATHS.events);
+  const { data, sha } = await fetchJSON(CONFIG.DATA_PATHS.events);
   eventsState = data || { events: [] };
+  eventsSha = sha;
 }
 
 async function loadAttendance() {
@@ -186,19 +188,76 @@ function renderGameCard(g) {
 }
 
 function openAddDialog() {
+  // 区分が「試合」で、まだ試合にリンクされていない予定があれば、まず予定選択ピッカーを開く
+  const linkableEvents = eventsState.events
+    .filter((e) => e.type === '試合' && !e.gameId)
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  if (linkableEvents.length > 0) {
+    openEventPicker(linkableEvents);
+  } else {
+    openBlankDialog();
+  }
+}
+
+function openBlankDialog(prefill = {}) {
   openDialog({
     id: '',
-    date: todayISO(),
+    date: prefill.date || todayISO(),
     opponent: '',
     ourScore: 0,
     theirScore: 0,
     isHome: false,
     innings: [],
-    location: '',
+    location: prefill.location || '',
     mvpId: '',
     highlights: '',
     photos: [],
+    eventId: prefill.eventId || null,
   }, false);
+}
+
+function openEventPicker(events) {
+  const html = `
+    <div class="modal-backdrop open" id="event-picker">
+      <div class="modal" style="max-width:500px">
+        <h3>📅 予定（試合）から登録</h3>
+        <p style="font-size:.85rem;color:var(--color-text-muted);margin:0 0 12px">
+          試合区分の予定が ${events.length} 件あります。試合スコアを登録する予定を選んでください。
+        </p>
+        <div style="max-height:50vh;overflow:auto;display:flex;flex-direction:column;gap:6px">
+          ${events.map((e) => `
+            <button type="button" class="btn" style="text-align:left;padding:10px 12px;height:auto;display:block" data-event="${e.id}">
+              <div style="font-weight:600">${escapeHtml(formatDate(e.date))}${e.startTime ? ` ${escapeHtml(e.startTime)}` : ''}${e.endTime ? `〜${escapeHtml(e.endTime)}` : ''}</div>
+              ${e.location ? `<div style="font-size:.8rem;color:var(--color-text-muted);margin-top:2px">📍 ${escapeHtml(e.location)}</div>` : ''}
+              ${e.description ? `<div style="font-size:.8rem;color:var(--color-text-muted);margin-top:2px;white-space:pre-wrap">${escapeHtml(e.description)}</div>` : ''}
+            </button>
+          `).join('')}
+        </div>
+        <div class="modal-actions" style="margin-top:12px">
+          <button type="button" class="btn" id="event-picker-blank">予定なしで作成</button>
+          <button type="button" class="btn btn-primary" id="event-picker-cancel">キャンセル</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', html);
+  const modal = document.getElementById('event-picker');
+  modal.querySelectorAll('[data-event]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const ev = events.find((e) => e.id === btn.dataset.event);
+      modal.remove();
+      openBlankDialog({
+        date: ev.date,
+        location: ev.location,
+        eventId: ev.id,
+      });
+    });
+  });
+  document.getElementById('event-picker-blank').addEventListener('click', () => {
+    modal.remove();
+    openBlankDialog();
+  });
+  document.getElementById('event-picker-cancel').addEventListener('click', () => modal.remove());
 }
 
 function openEditDialog(id) {
@@ -401,6 +460,31 @@ function openDialog(g, isEdit) {
         isEdit ? `update game ${newGame.date} vs ${newGame.opponent}` : `add game ${newGame.date} vs ${newGame.opponent}`
       );
       gamesState = next;
+
+      // 新規作成かつ eventId が設定されている場合、予定の gameId を更新（双方向リンク）
+      if (!isEdit && newGame.eventId) {
+        const eventIdx = eventsState.events.findIndex((e) => e.id === newGame.eventId);
+        if (eventIdx !== -1 && !eventsState.events[eventIdx].gameId) {
+          const updatedEvent = { ...eventsState.events[eventIdx], gameId: newGame.id };
+          const nextEvents = {
+            ...eventsState,
+            events: eventsState.events.map((e, i) => (i === eventIdx ? updatedEvent : e)),
+          };
+          try {
+            eventsSha = await writeJSON(
+              CONFIG.DATA_PATHS.events,
+              nextEvents,
+              eventsSha,
+              `link event to game ${newGame.date} vs ${newGame.opponent}`
+            );
+            eventsState = nextEvents;
+          } catch (linkErr) {
+            console.warn('event link failed', linkErr);
+            // 試合自体は保存済みなので致命ではない
+          }
+        }
+      }
+
       newPhotos.forEach((n) => URL.revokeObjectURL(n.previewUrl));
       modal.remove();
       render();

@@ -259,40 +259,10 @@ function openEventDialog(ev, isEdit) {
     submitBtn.disabled = true;
     submitBtn.textContent = '保存中...';
     try {
-      // 区分が「試合」の場合、リンクする試合を自動作成 or 同期
-      if (newEv.type === '試合') {
-        if (!newEv.gameId) {
-          // 新規: 試合を自動作成
-          const newGame = {
-            id: uid('g'),
-            date: newEv.date,
-            opponent: '',
-            ourScore: 0,
-            theirScore: 0,
-            result: 'draw',
-            isHome: false,
-            location: newEv.location,
-            mvpId: null,
-            highlights: '',
-            photos: [],
-            ourLineup: [],
-            ourPlays: [],
-            oppPlays: [],
-            playerStats: {},
-            finalized: false,
-            eventId: newEv.id,
-          };
-          const nextGames = { ...gamesState, games: [...gamesState.games, newGame] };
-          gamesSha = await writeJSON(
-            CONFIG.DATA_PATHS.games,
-            nextGames,
-            gamesSha,
-            `add game from event ${newEv.date}`
-          );
-          gamesState = nextGames;
-          newEv.gameId = newGame.id;
-        } else {
-          // 既存: 試合の date/location を予定と同期
+      // リンク済みの試合がある場合の同期処理
+      if (newEv.gameId) {
+        if (newEv.type === '試合') {
+          // 既存の試合の date/location を予定と同期
           const existing = gamesState.games.find((g) => g.id === newEv.gameId);
           if (existing) {
             const updatedGame = {
@@ -313,11 +283,13 @@ function openEventDialog(ev, isEdit) {
             );
             gamesState = nextGames;
           }
+        } else {
+          // 区分が「試合」以外に変わった: リンクは外す（試合自体は残す）
+          newEv.gameId = null;
         }
-      } else if (newEv.gameId) {
-        // 区分が「試合」以外に変わった: リンクは外す（試合自体は残す）
-        newEv.gameId = null;
       }
+      // ※区分=試合の予定の場合、試合は自動作成しません。
+      //   試合ページの「＋ 新規登録」 → 予定リストから選択して登録してください。
 
       const next = { ...eventsState };
       if (isEdit) {
@@ -334,10 +306,7 @@ function openEventDialog(ev, isEdit) {
       eventsState = next;
       modal.remove();
       render();
-      const msg = newEv.type === '試合'
-        ? (isEdit ? '保存しました' : '予定と試合を作成しました')
-        : '保存しました';
-      showToast(msg, 'success');
+      showToast('保存しました', 'success');
     } catch (err) {
       submitBtn.disabled = false;
       submitBtn.textContent = isEdit ? '更新' : '追加';
