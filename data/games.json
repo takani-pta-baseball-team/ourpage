@@ -43,8 +43,46 @@
       "highlights": "",
       "photos": [],
       "playerStats": {},
-      "ourLineup": [],
-      "ourPlays": []
+      "ourLineup": [
+        {
+          "memberId": "m_motjvwc1pwxc",
+          "position": "一塁手"
+        },
+        {
+          "memberId": "m_motjwag167wu",
+          "position": "二塁手"
+        },
+        {
+          "memberId": "m_motjwpmx3hrh",
+          "position": "三塁手"
+        },
+        {
+          "memberId": "m_motjx3yyzlq5",
+          "position": "左翼手"
+        },
+        {
+          "memberId": "m_motjwfehvqfi",
+          "position": "右翼手"
+        },
+        {
+          "memberId": "m_motjxi3p1xyf",
+          "position": "中堅手"
+        },
+        {
+          "memberId": "m_motjwv3tufud",
+          "position": "捕手"
+        },
+        {
+          "memberId": "m_moth46wbgufq",
+          "position": "投手"
+        },
+        {
+          "memberId": "m_motjw1nn8jkc",
+          "position": "遊撃手"
+        }
+      ],
+      "ourPlays": [],
+      "oppPlays": []
     }
   ]
 }
