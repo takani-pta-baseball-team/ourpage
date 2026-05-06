@@ -42,7 +42,19 @@
       "mvpId": null,
       "highlights": "",
       "photos": [],
-      "playerStats": {}
+      "playerStats": {},
+      "ourLineup": [
+        "m_motjvwc1pwxc",
+        "m_motjwpmx3hrh",
+        "m_motjx3yyzlq5",
+        "m_motjwag167wu",
+        "m_motjw1nn8jkc",
+        "m_moth46wbgufq",
+        "m_motjwv3tufud",
+        "m_motjxi3p1xyf",
+        "m_motjwfehvqfi"
+      ],
+      "ourPlays": []
     }
   ]
 }
