@@ -1,3 +1,18 @@
 {
-  "games": []
+  "games": [
+    {
+      "id": "g_motomfaapl43",
+      "date": "2026-05-10",
+      "opponent": "桃一",
+      "ourScore": 0,
+      "theirScore": 0,
+      "isHome": false,
+      "innings": [],
+      "location": "石神井公園A",
+      "mvpId": null,
+      "highlights": "",
+      "photos": [],
+      "eventId": "e_motobr6u8ag9"
+    }
+  ]
 }
