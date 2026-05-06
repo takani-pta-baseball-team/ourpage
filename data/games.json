@@ -161,6 +161,12 @@
           "batterId": "m_motkwzcfqnxm",
           "result": "flyOut",
           "rbi": 0
+        },
+        {
+          "inning": 6,
+          "batterId": "m_moth46wbgufq",
+          "result": "groundOut",
+          "rbi": 0
         }
       ],
       "oppPlays": [
