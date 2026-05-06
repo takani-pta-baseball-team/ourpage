@@ -19,9 +19,11 @@ renderNav('games');
 let gamesState = { games: [] };
 let gamesSha = null;
 let membersState = { members: [] };
+let eventsState = { events: [] };
+let attendanceState = { attendance: {} };
 
 requireAuth(async () => {
-  await Promise.all([loadGames(), loadMembers()]);
+  await Promise.all([loadGames(), loadMembers(), loadEvents(), loadAttendance()]);
   render();
   document.getElementById('add-game-btn').addEventListener('click', openAddDialog);
 });
@@ -35,6 +37,16 @@ async function loadGames() {
 async function loadMembers() {
   const { data } = await fetchJSON(CONFIG.DATA_PATHS.members);
   membersState = data || { members: [] };
+}
+
+async function loadEvents() {
+  const { data } = await fetchJSON(CONFIG.DATA_PATHS.events);
+  eventsState = data || { events: [] };
+}
+
+async function loadAttendance() {
+  const { data } = await fetchJSON(CONFIG.DATA_PATHS.attendance);
+  attendanceState = data || { attendance: {} };
 }
 
 function render() {
@@ -133,6 +145,16 @@ function renderGameCard(g) {
   const finalizedBadge = g.finalized
     ? '<span class="badge" style="background:var(--color-success);color:#fff;margin-left:4px">🏁 確定</span>'
     : (hasPlays ? '<span class="badge" style="background:#fff3cd;color:#5c4400;margin-left:4px">未確定</span>' : '');
+  // リンクされた予定があれば、出席者数を表示
+  let eventInfo = '';
+  if (g.eventId) {
+    const linkedEvent = eventsState.events.find((e) => e.id === g.eventId);
+    if (linkedEvent) {
+      const att = attendanceState.attendance[g.eventId] || {};
+      const yesCount = Object.values(att).filter((s) => s === 'yes').length;
+      eventInfo = `<div class="card-meta">📅 予定とリンク中（出席 ${yesCount}名）</div>`;
+    }
+  }
   return `
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
@@ -143,6 +165,7 @@ function renderGameCard(g) {
         </div>
       </div>
       ${renderCardScoreboard(g)}
+      ${eventInfo}
       ${g.location ? `<div class="card-meta">📍 ${escapeHtml(g.location)}</div>` : ''}
       ${mvpName ? `<div class="card-meta">🏆 MVP: ${escapeHtml(mvpName)}</div>` : ''}
       ${g.highlights ? `<p style="margin:8px 0 0;font-size:.9rem;white-space:pre-wrap">${escapeHtml(g.highlights)}</p>` : ''}
@@ -628,12 +651,34 @@ function openPlaysDialog(gameId) {
       return (a.name || '').localeCompare(b.name || '', 'ja');
     });
 
+    // 出席者ボタン用の情報（リンク予定があれば）
+    let attendeeButtonHtml = '';
+    if (game.eventId) {
+      const att = attendanceState.attendance[game.eventId] || {};
+      const yesIds = Object.keys(att).filter((mid) => att[mid] === 'yes');
+      const maybeIds = Object.keys(att).filter((mid) => att[mid] === 'maybe');
+      const yesNotInLineup = yesIds.filter((id) => !usedIds.has(id));
+      const maybeNotInLineup = maybeIds.filter((id) => !usedIds.has(id));
+      if (yesNotInLineup.length > 0 || maybeNotInLineup.length > 0) {
+        attendeeButtonHtml = `
+          <div style="background:#eef4fb;border-radius:6px;padding:10px;margin-bottom:10px">
+            <div style="font-size:.85rem;font-weight:600;color:var(--color-primary);margin-bottom:6px">📅 リンク中の予定の出席者</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              ${yesNotInLineup.length > 0 ? `<button type="button" class="btn btn-sm btn-primary" id="add-yes-attendees" style="font-size:.8rem">○ 出席 ${yesNotInLineup.length}名を打順に追加</button>` : ''}
+              ${maybeNotInLineup.length > 0 ? `<button type="button" class="btn btn-sm" id="add-maybe-attendees" style="font-size:.8rem">△ 未定 ${maybeNotInLineup.length}名も追加</button>` : ''}
+            </div>
+          </div>
+        `;
+      }
+    }
+
     document.getElementById('tab-lineup').innerHTML = `
       <div class="home-toggle" style="margin-bottom:10px">
         <span style="font-size:.8rem;color:var(--color-text-muted);margin-right:6px">当チームは</span>
         <button type="button" class="ht-btn ${!isHome ? 'active' : ''}" data-home="false">先攻 (表)</button>
         <button type="button" class="ht-btn ${isHome ? 'active' : ''}" data-home="true">後攻 (裏)</button>
       </div>
+      ${attendeeButtonHtml}
       <p style="font-size:.8rem;color:var(--color-text-muted);margin:0 0 8px">
         ↑↓で並び替え、×で削除。10人以上もOK。各打者にポジションを試合ごとに設定できます。
       </p>
@@ -712,6 +757,30 @@ function openPlaysDialog(gameId) {
         openSubstitutePicker(i);
       });
     });
+
+    // 出席者を一括追加
+    function addAttendeesByStatus(targetStatus) {
+      const att = attendanceState.attendance[game.eventId] || {};
+      const ids = Object.keys(att).filter((mid) => att[mid] === targetStatus);
+      const usedNow = new Set(lineup.map((e) => e.memberId));
+      const toAdd = ids
+        .filter((id) => !usedNow.has(id))
+        .map((id) => memberById(id))
+        .filter(Boolean)
+        .sort((a, b) => {
+          const na = a.number ?? 999, nb = b.number ?? 999;
+          if (na !== nb) return na - nb;
+          return (a.name || '').localeCompare(b.name || '', 'ja');
+        });
+      if (toAdd.length === 0) return;
+      for (const m of toAdd) {
+        lineup.push({ memberId: m.id, position: '' });
+      }
+      renderLineupTab();
+      showToast(`${toAdd.length}名を打順に追加しました`, 'success');
+    }
+    document.getElementById('add-yes-attendees')?.addEventListener('click', () => addAttendeesByStatus('yes'));
+    document.getElementById('add-maybe-attendees')?.addEventListener('click', () => addAttendeesByStatus('maybe'));
   }
 
   // ----- 攻撃タブ -----

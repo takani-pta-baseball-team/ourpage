@@ -10,9 +10,11 @@ let eventsSha = null;
 let attendanceState = { attendance: {} };
 let attendanceSha = null;
 let membersState = { members: [] };
+let gamesState = { games: [] };
+let gamesSha = null;
 
 requireAuth(async () => {
-  await Promise.all([loadEvents(), loadAttendance(), loadMembers()]);
+  await Promise.all([loadEvents(), loadAttendance(), loadMembers(), loadGames()]);
   render();
   document.getElementById('add-event-btn').addEventListener('click', openAddEventDialog);
 });
@@ -32,6 +34,12 @@ async function loadAttendance() {
 async function loadMembers() {
   const { data } = await fetchJSON(CONFIG.DATA_PATHS.members);
   membersState = data || { members: [] };
+}
+
+async function loadGames() {
+  const { data, sha } = await fetchJSON(CONFIG.DATA_PATHS.games);
+  gamesState = data || { games: [] };
+  gamesSha = sha;
 }
 
 function render() {
@@ -246,10 +254,71 @@ function openEventDialog(ev, isEdit) {
       type: fd.get('type').toString(),
       location: fd.get('location').toString().trim(),
       description: fd.get('description').toString().trim(),
+      gameId: ev.gameId || null,
     };
     submitBtn.disabled = true;
     submitBtn.textContent = '保存中...';
     try {
+      // 区分が「試合」の場合、リンクする試合を自動作成 or 同期
+      if (newEv.type === '試合') {
+        if (!newEv.gameId) {
+          // 新規: 試合を自動作成
+          const newGame = {
+            id: uid('g'),
+            date: newEv.date,
+            opponent: '',
+            ourScore: 0,
+            theirScore: 0,
+            result: 'draw',
+            isHome: false,
+            location: newEv.location,
+            mvpId: null,
+            highlights: '',
+            photos: [],
+            ourLineup: [],
+            ourPlays: [],
+            oppPlays: [],
+            playerStats: {},
+            finalized: false,
+            eventId: newEv.id,
+          };
+          const nextGames = { ...gamesState, games: [...gamesState.games, newGame] };
+          gamesSha = await writeJSON(
+            CONFIG.DATA_PATHS.games,
+            nextGames,
+            gamesSha,
+            `add game from event ${newEv.date}`
+          );
+          gamesState = nextGames;
+          newEv.gameId = newGame.id;
+        } else {
+          // 既存: 試合の date/location を予定と同期
+          const existing = gamesState.games.find((g) => g.id === newEv.gameId);
+          if (existing) {
+            const updatedGame = {
+              ...existing,
+              date: newEv.date,
+              location: existing.location || newEv.location,
+              eventId: newEv.id,
+            };
+            const nextGames = {
+              ...gamesState,
+              games: gamesState.games.map((g) => (g.id === newEv.gameId ? updatedGame : g)),
+            };
+            gamesSha = await writeJSON(
+              CONFIG.DATA_PATHS.games,
+              nextGames,
+              gamesSha,
+              `sync game with event ${newEv.date}`
+            );
+            gamesState = nextGames;
+          }
+        }
+      } else if (newEv.gameId) {
+        // 区分が「試合」以外に変わった: リンクは外す（試合自体は残す）
+        newEv.gameId = null;
+      }
+
       const next = { ...eventsState };
       if (isEdit) {
         next.events = next.events.map((x) => (x.id === newEv.id ? newEv : x));
@@ -265,7 +334,10 @@ function openEventDialog(ev, isEdit) {
       eventsState = next;
       modal.remove();
       render();
-      showToast('保存しました', 'success');
+      const msg = newEv.type === '試合'
+        ? (isEdit ? '保存しました' : '予定と試合を作成しました')
+        : '保存しました';
+      showToast(msg, 'success');
     } catch (err) {
       submitBtn.disabled = false;
       submitBtn.textContent = isEdit ? '更新' : '追加';
@@ -281,21 +353,49 @@ function openEventDialog(ev, isEdit) {
 async function deleteEvent(id) {
   const ev = eventsState.events.find((x) => x.id === id);
   if (!ev) return;
-  if (!confirm(`${formatDate(ev.date)} の予定を削除しますか？\n（出欠データも一緒に削除されます）`)) return;
-  try {
-    const nextEvents = { ...eventsState, events: eventsState.events.filter((x) => x.id !== id) };
-    const nextAtt = JSON.parse(JSON.stringify(attendanceState));
-    delete nextAtt.attendance[id];
+  let alsoDeleteGame = false;
+  const linkedGame = ev.gameId ? gamesState.games.find((g) => g.id === ev.gameId) : null;
+  if (linkedGame) {
+    if (!confirm(`${formatDate(ev.date)} の予定を削除しますか？\n（出欠データも一緒に削除されます）`)) return;
+    alsoDeleteGame = confirm(
+      `この予定にリンクしている試合 (vs ${linkedGame.opponent || '未定'}) も削除しますか？\n\n` +
+      `[OK] = 試合データも削除（打席記録・写真などすべて削除）\n` +
+      `[キャンセル] = 試合は残す（リンクだけ解除）`
+    );
+  } else {
+    if (!confirm(`${formatDate(ev.date)} の予定を削除しますか？\n（出欠データも一緒に削除されます）`)) return;
+  }
 
+  try {
+    // リンク中の試合の eventId をクリア（残す場合）または試合自体を削除（削除する場合）
+    if (linkedGame) {
+      if (alsoDeleteGame) {
+        const nextGames = { ...gamesState, games: gamesState.games.filter((g) => g.id !== linkedGame.id) };
+        gamesSha = await writeJSON(CONFIG.DATA_PATHS.games, nextGames, gamesSha, `delete game (event removed)`);
+        gamesState = nextGames;
+      } else {
+        const updatedGame = { ...linkedGame, eventId: null };
+        const nextGames = {
+          ...gamesState,
+          games: gamesState.games.map((g) => (g.id === linkedGame.id ? updatedGame : g)),
+        };
+        gamesSha = await writeJSON(CONFIG.DATA_PATHS.games, nextGames, gamesSha, `unlink game from event`);
+        gamesState = nextGames;
+      }
+    }
+
+    const nextEvents = { ...eventsState, events: eventsState.events.filter((x) => x.id !== id) };
     eventsSha = await writeJSON(CONFIG.DATA_PATHS.events, nextEvents, eventsSha, `delete event ${ev.date}`);
     eventsState = nextEvents;
 
     if (attendanceState.attendance[id]) {
+      const nextAtt = JSON.parse(JSON.stringify(attendanceState));
+      delete nextAtt.attendance[id];
       attendanceSha = await writeJSON(CONFIG.DATA_PATHS.attendance, nextAtt, attendanceSha, `delete attendance for ${ev.date}`);
       attendanceState = nextAtt;
     }
     render();
-    showToast('削除しました', 'success');
+    showToast(alsoDeleteGame ? '予定と試合を削除しました' : '削除しました', 'success');
   } catch (err) {
     if (err instanceof ConflictError) {
       showToast(err.message, 'error');
