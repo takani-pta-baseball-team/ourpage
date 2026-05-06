@@ -84,6 +84,30 @@
           "batterId": "m_motjw1nn8jkc",
           "result": "groundOut",
           "rbi": 0
+        },
+        {
+          "inning": 2,
+          "batterId": "m_moth46wbgufq",
+          "result": "walk",
+          "rbi": 0
+        },
+        {
+          "inning": 2,
+          "batterId": "m_motjwv3tufud",
+          "result": "groundOut",
+          "rbi": 0
+        },
+        {
+          "inning": 2,
+          "batterId": "m_motjxi3p1xyf",
+          "result": "strikeout",
+          "rbi": 0
+        },
+        {
+          "inning": 2,
+          "batterId": "m_motjwfehvqfi",
+          "result": "flyOut",
+          "rbi": 0
         }
       ]
     }
