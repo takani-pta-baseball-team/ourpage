@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "algo": "AES-GCM/PBKDF2-SHA256",
+  "iterations": 200000,
+  "salt": "LNBla/ichr/IXL7BYeCgsA==",
+  "iv": "INKIKdiZRtCp+dAv",
+  "ciphertext": "S67rySXDQM1A2ss3NIPYWJSCdcx6Cep1jdSA0d7UwE55fiyd/2YUClxrXNSzl/eJOLuEO4cEc91BTLVPsMDzq2nuA7taFALAMOGfeB5wMTqXssbxmKX1is/6xDTDpQuV9jYxQA8kjodfHOyEuw=="
+}
