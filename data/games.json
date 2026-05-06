@@ -135,6 +135,24 @@
           "batterId": "m_motkwzcfqnxm",
           "result": "strikeout",
           "rbi": 0
+        },
+        {
+          "inning": 3,
+          "batterId": "m_moth46wbgufq",
+          "result": "strikeout",
+          "rbi": 0
+        },
+        {
+          "inning": 3,
+          "batterId": "m_motkvjfh8tbi",
+          "result": "flyOut",
+          "rbi": 0
+        },
+        {
+          "inning": 3,
+          "batterId": "m_motkv9ascdpx",
+          "result": "groundOut",
+          "rbi": 0
         }
       ],
       "oppPlays": [
@@ -153,6 +171,24 @@
         {
           "inning": 1,
           "result": "strikeout",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 2,
+          "result": "strikeout",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 2,
+          "result": "flyOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 2,
+          "result": "groundOut",
           "rbi": 0,
           "pitcherId": "m_motkvjfh8tbi"
         }
