@@ -266,7 +266,7 @@
         }
       ],
       "oppPlays": [],
-      "finalized": true
+      "finalized": false
     }
   ]
 }
