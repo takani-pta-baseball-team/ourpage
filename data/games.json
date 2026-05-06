@@ -4,9 +4,9 @@
       "id": "g_motkzajgqf5f",
       "date": "2026-05-10",
       "opponent": "桃一",
-      "ourScore": 5,
+      "ourScore": 0,
       "theirScore": 0,
-      "result": "win",
+      "result": "draw",
       "isHome": false,
       "innings": [
         {
@@ -40,7 +40,7 @@
       ],
       "location": "石神井",
       "mvpId": "m_motkvjfh8tbi",
-      "highlights": "てすと",
+      "highlights": "テスト",
       "photos": [
         "images/games/g_motkzajgqf5f/1778045227488.jpg"
       ],
@@ -264,136 +264,7 @@
           "result": "flyOut",
           "rbi": 0
         }
-      ],
-      "oppPlays": [
-        {
-          "inning": 1,
-          "result": "flyOut",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
-        {
-          "inning": 1,
-          "result": "groundOut",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
-        {
-          "inning": 1,
-          "result": "strikeout",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
-        {
-          "inning": 2,
-          "result": "strikeout",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
-        {
-          "inning": 2,
-          "result": "flyOut",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
-        {
-          "inning": 2,
-          "result": "groundOut",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
-        {
-          "inning": 3,
-          "result": "groundOut",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
-        {
-          "inning": 3,
-          "result": "strikeout",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
-        {
-          "inning": 3,
-          "result": "flyOut",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
-        {
-          "inning": 4,
-          "result": "flyOut",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
-        {
-          "inning": 4,
-          "result": "groundOut",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
-        {
-          "inning": 4,
-          "result": "flyOut",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
-        {
-          "inning": 5,
-          "result": "strikeout",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
-        {
-          "inning": 5,
-          "result": "groundOut",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
-        {
-          "inning": 5,
-          "result": "otherOut",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
-        {
-          "inning": 6,
-          "result": "flyOut",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
-        {
-          "inning": 6,
-          "result": "groundOut",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
-        {
-          "inning": 6,
-          "result": "otherOut",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
-        {
-          "inning": 7,
-          "result": "strikeout",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
-        {
-          "inning": 7,
-          "result": "flyOut",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
-        {
-          "inning": 7,
-          "result": "groundOut",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        }
-      ],
-      "finalized": true
+      ]
     }
   ]
 }
