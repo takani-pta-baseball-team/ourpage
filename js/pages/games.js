@@ -703,7 +703,10 @@ function openDialog(g, isEdit) {
         ...existingPhotos.filter((p) => !removedPhotos.includes(p)),
         ...uploadedPaths,
       ];
+      // 既存のフィールド (oppPlays, finalized, ourPlays, ourLineup, playerStats など)
+      // を漏れなく保持するため、まず g を展開してからフォーム入力値で上書きする
       const newGame = {
+        ...g,
         id: gameId,
         date: fd.get('date'),
         opponent: fd.get('opponent').toString().trim(),
@@ -716,9 +719,6 @@ function openDialog(g, isEdit) {
         mvpId: fd.get('mvpId').toString() || null,
         highlights: fd.get('highlights').toString().trim(),
         photos: finalPhotos,
-        playerStats: g.playerStats || {},
-        ourLineup: g.ourLineup || [],
-        ourPlays: g.ourPlays || [],
       };
 
       const next = { ...gamesState };
