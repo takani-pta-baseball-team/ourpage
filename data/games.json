@@ -4,9 +4,9 @@
       "id": "g_motkzajgqf5f",
       "date": "2026-05-10",
       "opponent": "桃一",
-      "ourScore": 5,
+      "ourScore": 0,
       "theirScore": 0,
-      "result": "win",
+      "result": "draw",
       "isHome": false,
       "innings": [
         {
@@ -40,7 +40,7 @@
       ],
       "location": "石神井",
       "mvpId": "m_motkvjfh8tbi",
-      "highlights": "テスト前",
+      "highlights": "テスト",
       "photos": [
         "images/games/g_motkzajgqf5f/1778045227488.jpg"
       ],
