@@ -161,6 +161,12 @@
           "result": "otherOut",
           "rbi": 0,
           "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 3,
+          "result": "flyOut",
+          "rbi": 0,
+          "pitcherId": "m_motkwoito899"
         }
       ],
       "result": "draw"
