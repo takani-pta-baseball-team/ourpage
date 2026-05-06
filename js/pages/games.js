@@ -54,6 +54,46 @@ function render() {
   });
 }
 
+function renderCardScoreboard(g) {
+  const opponent = escapeHtml(g.opponent || '相手');
+  if (!g.innings || g.innings.length === 0) {
+    return `
+      <div class="score-line">
+        <span>当チーム</span>
+        <span class="score-num">${g.ourScore ?? 0}</span>
+        <span class="vs">-</span>
+        <span class="score-num">${g.theirScore ?? 0}</span>
+        <span>${opponent}</span>
+      </div>
+    `;
+  }
+  const isHome = !!g.isHome;
+  const topName = isHome ? opponent : '当ﾁｰﾑ';
+  const bottomName = isHome ? '当ﾁｰﾑ' : opponent;
+  const headerCells = g.innings.map((_, i) => `<th>${i + 1}</th>`).join('');
+  const topCells = g.innings.map((inn) => `<td>${inn.top ?? 0}</td>`).join('');
+  const bottomCells = g.innings.map((inn) => `<td>${inn.bottom ?? 0}</td>`).join('');
+  const totTop = g.innings.reduce((s, i) => s + (i.top || 0), 0);
+  const totBottom = g.innings.reduce((s, i) => s + (i.bottom || 0), 0);
+  return `
+    <div class="scoreboard-display">
+      <table>
+        <thead>
+          <tr><th></th>${headerCells}<th>計</th></tr>
+        </thead>
+        <tbody>
+          <tr class="${isHome ? '' : 'us-row'}">
+            <td class="team-name">${topName}</td>${topCells}<td class="total">${totTop}</td>
+          </tr>
+          <tr class="${isHome ? 'us-row' : ''}">
+            <td class="team-name">${bottomName}</td>${bottomCells}<td class="total">${totBottom}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 // ========== 選手成績 ==========
 const BATTING_FIELDS = [
   { key: 'singles', label: 'ヒット' },
@@ -334,13 +374,7 @@ function renderGameCard(g) {
           <button class="btn btn-sm btn-danger" data-delete="${g.id}">削除</button>
         </div>
       </div>
-      <div class="score-line">
-        <span>当チーム</span>
-        <span class="score-num">${g.ourScore ?? 0}</span>
-        <span class="vs">-</span>
-        <span class="score-num">${g.theirScore ?? 0}</span>
-        <span>${escapeHtml(g.opponent || '相手')}</span>
-      </div>
+      ${renderCardScoreboard(g)}
       ${g.location ? `<div class="card-meta">📍 ${escapeHtml(g.location)}</div>` : ''}
       ${mvpName ? `<div class="card-meta">🏆 MVP: ${escapeHtml(mvpName)}</div>` : ''}
       ${g.highlights ? `<p style="margin:8px 0 0;font-size:.9rem;white-space:pre-wrap">${escapeHtml(g.highlights)}</p>` : ''}
@@ -367,6 +401,8 @@ function openAddDialog() {
     opponent: '',
     ourScore: 0,
     theirScore: 0,
+    isHome: false,
+    innings: [],
     location: '',
     mvpId: '',
     highlights: '',
@@ -377,7 +413,7 @@ function openAddDialog() {
 function openEditDialog(id) {
   const g = gamesState.games.find((x) => x.id === id);
   if (!g) return;
-  openDialog({ ...g, photos: [...(g.photos || [])] }, true);
+  openDialog({ ...g, photos: [...(g.photos || [])], innings: [...(g.innings || [])] }, true);
 }
 
 function openDialog(g, isEdit) {
@@ -388,6 +424,20 @@ function openDialog(g, isEdit) {
   const existingPhotos = [...(g.photos || [])];
   const removedPhotos = [];
   const newPhotos = [];
+
+  // イニング別スコアの初期状態
+  let innings;
+  if (g.innings && g.innings.length > 0) {
+    innings = g.innings.map((i) => ({ top: Number(i.top || 0), bottom: Number(i.bottom || 0) }));
+  } else if ((g.ourScore || 0) > 0 || (g.theirScore || 0) > 0) {
+    // 既存データの移行: 1回に総得点を入れる（その他は0）
+    innings = Array.from({ length: 7 }, () => ({ top: 0, bottom: 0 }));
+    if (!g.isHome) innings[0] = { top: g.ourScore || 0, bottom: g.theirScore || 0 };
+    else innings[0] = { top: g.theirScore || 0, bottom: g.ourScore || 0 };
+  } else {
+    innings = Array.from({ length: 7 }, () => ({ top: 0, bottom: 0 }));
+  }
+  let isHome = !!g.isHome;
 
   const html = `
     <div class="modal-backdrop open" id="game-modal" role="dialog" aria-modal="true">
@@ -402,14 +452,19 @@ function openDialog(g, isEdit) {
             <label class="field-label">対戦相手</label>
             <input class="field-input" type="text" name="opponent" value="${escapeHtml(g.opponent)}" required />
           </div>
-          <div class="field-row">
-            <div class="field">
-              <label class="field-label">当チーム得点</label>
-              <input class="field-input" type="number" name="ourScore" value="${g.ourScore ?? 0}" min="0" required />
+          <div class="field">
+            <label class="field-label">スコア（イニング別）</label>
+            <div class="home-toggle">
+              <span style="font-size:.8rem;color:var(--color-text-muted);margin-right:8px">当チームは</span>
+              <button type="button" class="ht-btn" data-home="false">先攻 (表)</button>
+              <button type="button" class="ht-btn" data-home="true">後攻 (裏)</button>
             </div>
-            <div class="field">
-              <label class="field-label">相手得点</label>
-              <input class="field-input" type="number" name="theirScore" value="${g.theirScore ?? 0}" min="0" required />
+            <div class="scoreboard-wrapper">
+              <div id="scoreboard"></div>
+            </div>
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <button type="button" class="btn btn-sm" id="add-inning">＋ 回</button>
+              <button type="button" class="btn btn-sm" id="rem-inning">− 回</button>
             </div>
           </div>
           <div class="field">
@@ -499,6 +554,63 @@ function openDialog(g, isEdit) {
   renderExisting();
   renderNew();
 
+  // ----- イニング別スコア -----
+  function renderScoreboard() {
+    const sb = document.getElementById('scoreboard');
+    const headerCells = innings.map((_, i) => `<th>${i + 1}</th>`).join('');
+    const topName = isHome ? '相手' : '当ﾁｰﾑ';
+    const bottomName = isHome ? '当ﾁｰﾑ' : '相手';
+    const topCells = innings.map((inn, i) => `<td><input type="number" min="0" inputmode="numeric" class="inning-cell" data-pos="top" data-i="${i}" value="${inn.top}"></td>`).join('');
+    const bottomCells = innings.map((inn, i) => `<td><input type="number" min="0" inputmode="numeric" class="inning-cell" data-pos="bottom" data-i="${i}" value="${inn.bottom}"></td>`).join('');
+    const totTop = innings.reduce((s, i) => s + (i.top || 0), 0);
+    const totBottom = innings.reduce((s, i) => s + (i.bottom || 0), 0);
+    sb.innerHTML = `
+      <table class="scoreboard">
+        <thead>
+          <tr><th></th>${headerCells}<th>計</th></tr>
+        </thead>
+        <tbody>
+          <tr class="${isHome ? '' : 'us-row'}">
+            <td>${topName}</td>${topCells}<td class="total" id="total-top">${totTop}</td>
+          </tr>
+          <tr class="${isHome ? 'us-row' : ''}">
+            <td>${bottomName}</td>${bottomCells}<td class="total" id="total-bottom">${totBottom}</td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+    sb.querySelectorAll('.inning-cell').forEach((input) => {
+      input.addEventListener('input', () => {
+        const pos = input.dataset.pos;
+        const i = Number(input.dataset.i);
+        innings[i][pos] = Math.max(0, Number(input.value) || 0);
+        document.getElementById('total-top').textContent = innings.reduce((s, x) => s + x.top, 0);
+        document.getElementById('total-bottom').textContent = innings.reduce((s, x) => s + x.bottom, 0);
+      });
+      input.addEventListener('focus', () => input.select());
+    });
+  }
+  renderScoreboard();
+
+  modal.querySelectorAll('.ht-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.home === String(isHome));
+    btn.addEventListener('click', () => {
+      isHome = btn.dataset.home === 'true';
+      modal.querySelectorAll('.ht-btn').forEach((b) => b.classList.toggle('active', b.dataset.home === String(isHome)));
+      renderScoreboard();
+    });
+  });
+  document.getElementById('add-inning').addEventListener('click', () => {
+    if (innings.length >= 12) return;
+    innings.push({ top: 0, bottom: 0 });
+    renderScoreboard();
+  });
+  document.getElementById('rem-inning').addEventListener('click', () => {
+    if (innings.length <= 1) return;
+    innings.pop();
+    renderScoreboard();
+  });
+
   photoAddBtn.addEventListener('click', () => photoInput.click());
   photoInput.addEventListener('change', () => {
     for (const file of photoInput.files) {
@@ -516,8 +628,10 @@ function openDialog(g, isEdit) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(form);
-    const ourScore = Number(fd.get('ourScore'));
-    const theirScore = Number(fd.get('theirScore'));
+    const totTop = innings.reduce((s, i) => s + (i.top || 0), 0);
+    const totBottom = innings.reduce((s, i) => s + (i.bottom || 0), 0);
+    const ourScore = isHome ? totBottom : totTop;
+    const theirScore = isHome ? totTop : totBottom;
     const gameId = g.id || uid('g');
 
     submitBtn.disabled = true;
@@ -562,10 +676,13 @@ function openDialog(g, isEdit) {
         ourScore,
         theirScore,
         result: ourScore > theirScore ? 'win' : ourScore < theirScore ? 'lose' : 'draw',
+        isHome,
+        innings: innings.map((i) => ({ top: i.top || 0, bottom: i.bottom || 0 })),
         location: fd.get('location').toString().trim(),
         mvpId: fd.get('mvpId').toString() || null,
         highlights: fd.get('highlights').toString().trim(),
         photos: finalPhotos,
+        playerStats: g.playerStats || {},
       };
 
       const next = { ...gamesState };
