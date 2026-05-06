@@ -1,7 +1,7 @@
 import { CONFIG } from '../config.js';
 import { fetchJSON, writeJSON, ConflictError } from '../api.js';
 import { renderHeader, renderNav, requireAuth, showToast, escapeHtml, uid } from '../app.js';
-import { aggregateBattingFromPlays } from '../plays.js';
+import { aggregateBattingFromPlays, HIT_RESULTS } from '../plays.js';
 
 renderHeader();
 renderNav('members');
@@ -69,9 +69,27 @@ function aggregateStats(memberId) {
         r.reachedOnError += b.reachedOnError || 0;
       }
     }
-    // 投手成績 (Phase 1 では旧方式のみ。Phase 2 で oppPlays から自動集計)
+    // 投手成績: 守備の打席記録 (oppPlays) があれば自動集計、なければ旧方式
     const ps = game.playerStats && game.playerStats[memberId];
-    if (ps && ps.pitching) {
+    if (game.oppPlays && game.oppPlays.length > 0) {
+      const myOppPAs = game.oppPlays.filter((p) => p.pitcherId === memberId);
+      if (myOppPAs.length > 0) {
+        r.pitchGames++;
+        for (const p of myOppPAs) {
+          if (p.result === 'strikeout') r.pitchStrikeouts++;
+          else if (p.result === 'walk') r.walks++;
+          else if (p.result === 'hbp') r.hitBatters++;
+          else if (HIT_RESULTS.includes(p.result)) r.hitsAllowed++;
+          else if (p.result === 'reachedOnError') r.errors++;
+          r.runsAllowed = (r.runsAllowed || 0) + (p.rbi || 0);
+        }
+      }
+      // 勝/負は手動入力から拾う（自動推定が難しいため）
+      if (ps && ps.pitching) {
+        if (ps.pitching.decision === 'win') r.wins++;
+        if (ps.pitching.decision === 'loss') r.losses++;
+      }
+    } else if (ps && ps.pitching) {
       const p = ps.pitching;
       const hasPitching = !!p.decision || PITCHING_KEYS.some((k) => (p[k] || 0) > 0);
       if (hasPitching) r.pitchGames++;
@@ -84,6 +102,7 @@ function aggregateStats(memberId) {
       r.hitsAllowed += p.hitsAllowed || 0;
     }
   }
+  if (r.runsAllowed === undefined) r.runsAllowed = 0;
   r.hits = r.singles + r.doubles + r.triples + r.homeRuns;
   r.plateAppearances = r.hits + r.walksBatter + r.hbpBatter + r.strikeouts + r.flyOuts + r.groundOuts + r.reachedOnError;
   r.atBats = r.plateAppearances - r.walksBatter - r.hbpBatter;
@@ -141,8 +160,7 @@ function renderMemberCard(m) {
             <span class="card-title" style="margin:0">${escapeHtml(m.name)}</span>
           </div>
           <div class="card-meta">
-            ${m.position ? escapeHtml(m.position) : '—'}
-            ${mvpCount > 0 ? ` ・ 🏆 MVP ${mvpCount}回` : ''}
+            ${mvpCount > 0 ? `🏆 MVP ${mvpCount}回` : '—'}
           </div>
           <div class="card-meta" style="margin-top:4px">${summary}</div>
         </div>
@@ -171,10 +189,6 @@ function openDetailDialog(id) {
     <div class="modal-backdrop open" id="detail-modal" role="dialog" aria-modal="true">
       <div class="modal" style="max-width:520px">
         <h3>${m.number != null ? `#${m.number} ` : ''}${escapeHtml(m.name)}</h3>
-        <div class="card-meta" style="margin-bottom:12px">
-          ${m.position ? `ポジション: ${escapeHtml(m.position)}` : ''}
-          ${m.joinedDate ? ` ・ 入部: ${escapeHtml(m.joinedDate)}` : ''}
-        </div>
 
         <h4 style="margin:16px 0 8px;font-size:.95rem;color:var(--color-primary)">打撃成績 <span style="color:var(--color-text-muted);font-weight:normal;font-size:.8rem">（試合記録から自動集計）</span></h4>
         ${s.plateAppearances === 0 ? `<div class="card-meta">まだ記録がありません</div>` : `
@@ -190,12 +204,12 @@ function openDetailDialog(id) {
         `}
 
         ${s.pitchGames > 0 ? `
-        <h4 style="margin:16px 0 8px;font-size:.95rem;color:var(--color-primary)">投手成績</h4>
+        <h4 style="margin:16px 0 8px;font-size:.95rem;color:var(--color-primary)">投手成績 <span style="color:var(--color-text-muted);font-weight:normal;font-size:.8rem">（守備の打席記録から自動集計）</span></h4>
         <table class="stats-table">
           <tr><td>登板</td><td>${s.pitchGames}</td><td>勝-敗</td><td>${s.wins}-${s.losses}</td></tr>
           <tr><td>奪三振</td><td>${s.pitchStrikeouts}</td><td>被安打</td><td>${s.hitsAllowed}</td></tr>
-          <tr><td>四球</td><td>${s.walks}</td><td>死球</td><td>${s.hitBatters}</td></tr>
-          <tr><td>エラー</td><td>${s.errors}</td><td></td><td></td></tr>
+          <tr><td>与四球</td><td>${s.walks}</td><td>与死球</td><td>${s.hitBatters}</td></tr>
+          <tr><td>失点</td><td>${s.runsAllowed}</td><td>失策出塁</td><td>${s.errors}</td></tr>
         </table>
         ` : ''}
 
@@ -228,8 +242,6 @@ function openAddDialog() {
     id: '',
     name: '',
     number: '',
-    position: '',
-    joinedDate: '',
     notes: '',
   }, false);
 }
@@ -241,9 +253,6 @@ function openEditDialog(id) {
 }
 
 function openDialog(m, isEdit) {
-  const positionOptions = ['', ...CONFIG.POSITIONS]
-    .map((p) => `<option value="${escapeHtml(p)}" ${p === m.position ? 'selected' : ''}>${p || '-- 未設定 --'}</option>`)
-    .join('');
   const html = `
     <div class="modal-backdrop open" id="member-modal" role="dialog" aria-modal="true">
       <div class="modal">
@@ -260,19 +269,12 @@ function openDialog(m, isEdit) {
             </div>
           </div>
           <div class="field">
-            <label class="field-label">ポジション</label>
-            <select class="field-select" name="position">${positionOptions}</select>
-          </div>
-          <div class="field">
-            <label class="field-label">入部日</label>
-            <input class="field-input" type="date" name="joinedDate" value="${m.joinedDate || ''}" />
-          </div>
-          <div class="field">
             <label class="field-label">メモ</label>
             <textarea class="field-textarea" name="notes">${escapeHtml(m.notes || '')}</textarea>
           </div>
           <p style="font-size:.8rem;color:var(--color-text-muted);margin:0 0 12px">
-            ※ 通算成績は試合ごとの「📊 選手成績」から自動で集計されます。
+            ※ ポジションは試合ごとの打順設定で登録します。<br>
+            ※ 通算成績は試合の打席記録から自動集計されます。
           </p>
           <div class="modal-actions">
             <button type="button" class="btn" id="member-cancel">キャンセル</button>
@@ -297,8 +299,6 @@ function openDialog(m, isEdit) {
       id: m.id || uid('m'),
       name: fd.get('name').toString().trim(),
       number: numberRaw === '' ? null : Number(numberRaw),
-      position: fd.get('position').toString(),
-      joinedDate: fd.get('joinedDate').toString(),
       notes: fd.get('notes').toString().trim(),
     };
 

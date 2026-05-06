@@ -821,7 +821,7 @@ function openLightbox(photos, startIdx, game) {
   function close() { lb.remove(); }
 }
 
-// ========== 打席記録モーダル (Phase 1: 打順 + 我々の攻撃) ==========
+// ========== 打席記録モーダル (Phase 2: 打順 + 攻撃 + 守備 + 編集) ==========
 function openPlaysDialog(gameId) {
   const game = gamesState.games.find((x) => x.id === gameId);
   if (!game) return;
@@ -830,13 +830,30 @@ function openPlaysDialog(gameId) {
     return;
   }
 
-  // 編集中のローカルステート
-  let lineup = [...(game.ourLineup || [])];
+  // 既存データの正規化（古い文字列配列 → 新しいオブジェクト配列）
+  const normalizeLineup = (raw) =>
+    (raw || []).map((item) =>
+      typeof item === 'string'
+        ? { memberId: item, position: '' }
+        : { memberId: item.memberId || '', position: item.position || '' }
+    );
+
+  let lineup = normalizeLineup(game.ourLineup);
   let plays = (game.ourPlays || []).map((p) => ({ ...p }));
+  let oppPlays = (game.oppPlays || []).map((p) => ({ ...p }));
   let activeTab = lineup.length === 0 ? 'lineup' : 'offense';
+
+  // 攻撃タブの状態
   let pendingResult = null;
   let pendingRBI = 0;
-  let manualInning = null; // null = 自動計算
+  let manualInning = null;
+  // 守備タブの状態
+  let pendingDefResult = null;
+  let pendingDefRBI = 0;
+  let manualDefInning = null;
+  let currentPitcherId = oppPlays.length > 0
+    ? oppPlays[oppPlays.length - 1].pitcherId
+    : null;
 
   const memberById = (id) => membersState.members.find((m) => m.id === id);
 
@@ -850,9 +867,11 @@ function openPlaysDialog(gameId) {
         <div class="play-tabs">
           <button type="button" class="play-tab" data-tab="lineup">打順</button>
           <button type="button" class="play-tab" data-tab="offense">攻撃</button>
+          <button type="button" class="play-tab" data-tab="defense">守備</button>
         </div>
         <div class="play-tab-content" id="tab-lineup"></div>
         <div class="play-tab-content" id="tab-offense"></div>
+        <div class="play-tab-content" id="tab-defense"></div>
         <div class="modal-actions" style="margin-top:12px">
           <button type="button" class="btn" id="plays-cancel">キャンセル</button>
           <button type="button" class="btn btn-primary" id="plays-save">保存</button>
@@ -869,6 +888,7 @@ function openPlaysDialog(gameId) {
     modal.querySelectorAll('.play-tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tab));
     document.getElementById('tab-lineup').style.display = tab === 'lineup' ? 'block' : 'none';
     document.getElementById('tab-offense').style.display = tab === 'offense' ? 'block' : 'none';
+    document.getElementById('tab-defense').style.display = tab === 'defense' ? 'block' : 'none';
   }
   modal.querySelectorAll('.play-tab').forEach((t) => {
     t.addEventListener('click', () => setTab(t.dataset.tab));
@@ -876,24 +896,37 @@ function openPlaysDialog(gameId) {
 
   // ----- 打順タブ -----
   function renderLineupTab() {
+    const positionOptions = (selected) =>
+      ['', ...CONFIG.POSITIONS]
+        .map((p) => `<option value="${escapeHtml(p)}" ${p === (selected || '') ? 'selected' : ''}>${p || '-- 未選択 --'}</option>`)
+        .join('');
+
     const lineupHtml = lineup.length === 0
       ? '<div class="empty">打順未設定。下から選手を追加してください。</div>'
-      : lineup.map((memberId, i) => {
-        const m = memberById(memberId);
+      : lineup.map((entry, i) => {
+        const m = memberById(entry.memberId);
         return `
           <div class="lineup-row" data-pos="${i}">
-            <span class="lineup-pos">${i + 1}</span>
-            <span class="lineup-name">${m ? `${m.number != null ? `<span class="num-badge">#${m.number}</span> ` : ''}${escapeHtml(m.name)}` : '<span style="color:var(--color-danger)">削除済</span>'}</span>
-            <div class="lineup-actions">
-              <button type="button" class="lineup-icon-btn" data-up ${i === 0 ? 'disabled' : ''}>↑</button>
-              <button type="button" class="lineup-icon-btn" data-down ${i === lineup.length - 1 ? 'disabled' : ''}>↓</button>
-              <button type="button" class="lineup-icon-btn" data-remove>×</button>
+            <div class="lineup-row-main">
+              <span class="lineup-pos">${i + 1}</span>
+              <span class="lineup-name">${m ? `${m.number != null ? `<span class="num-badge">#${m.number}</span> ` : ''}${escapeHtml(m.name)}` : '<span style="color:var(--color-danger)">削除済</span>'}</span>
+              <div class="lineup-actions">
+                <button type="button" class="lineup-icon-btn" data-up ${i === 0 ? 'disabled' : ''}>↑</button>
+                <button type="button" class="lineup-icon-btn" data-down ${i === lineup.length - 1 ? 'disabled' : ''}>↓</button>
+                <button type="button" class="lineup-icon-btn" data-remove>×</button>
+              </div>
+            </div>
+            <div class="lineup-row-position">
+              <span class="lineup-pos-label">守備位置</span>
+              <select class="lineup-pos-select" data-pos-select="${i}">
+                ${positionOptions(entry.position)}
+              </select>
             </div>
           </div>
         `;
       }).join('');
 
-    const usedIds = new Set(lineup);
+    const usedIds = new Set(lineup.map((e) => e.memberId));
     const available = membersState.members.filter((m) => !usedIds.has(m.id));
     const sortedAvail = [...available].sort((a, b) => {
       const na = a.number ?? 999, nb = b.number ?? 999;
@@ -903,7 +936,7 @@ function openPlaysDialog(gameId) {
 
     document.getElementById('tab-lineup').innerHTML = `
       <p style="font-size:.8rem;color:var(--color-text-muted);margin:0 0 8px">
-        ↑↓で並び替え、×で削除。10人以上もOK。
+        ↑↓で並び替え、×で削除。10人以上もOK。各打者にポジションを試合ごとに設定できます。
       </p>
       <div class="lineup-list">${lineupHtml}</div>
       ${sortedAvail.length > 0 ? `
@@ -920,7 +953,8 @@ function openPlaysDialog(gameId) {
       ` : '<p style="font-size:.8rem;color:var(--color-text-muted);margin-top:8px">全員を打順に入れました。</p>'}
     `;
 
-    document.querySelectorAll('[data-up]').forEach((btn) => {
+    const tabEl = document.getElementById('tab-lineup');
+    tabEl.querySelectorAll('[data-up]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const i = Number(btn.closest('.lineup-row').dataset.pos);
         if (i > 0) {
@@ -929,7 +963,7 @@ function openPlaysDialog(gameId) {
         }
       });
     });
-    document.querySelectorAll('[data-down]').forEach((btn) => {
+    tabEl.querySelectorAll('[data-down]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const i = Number(btn.closest('.lineup-row').dataset.pos);
         if (i < lineup.length - 1) {
@@ -938,18 +972,24 @@ function openPlaysDialog(gameId) {
         }
       });
     });
-    document.querySelectorAll('[data-remove]').forEach((btn) => {
+    tabEl.querySelectorAll('[data-remove]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const i = Number(btn.closest('.lineup-row').dataset.pos);
-        const m = memberById(lineup[i]);
+        const m = memberById(lineup[i].memberId);
         if (!confirm(`「${m ? m.name : '?'}」を打順から外しますか？\n（過去の打席記録は残ります）`)) return;
         lineup.splice(i, 1);
         renderLineupTab();
       });
     });
-    document.querySelectorAll('[data-add-member]').forEach((btn) => {
+    tabEl.querySelectorAll('[data-pos-select]').forEach((sel) => {
+      sel.addEventListener('change', () => {
+        const i = Number(sel.dataset.posSelect);
+        lineup[i].position = sel.value;
+      });
+    });
+    tabEl.querySelectorAll('[data-add-member]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        lineup.push(btn.dataset.addMember);
+        lineup.push({ memberId: btn.dataset.addMember, position: '' });
         renderLineupTab();
       });
     });
@@ -964,17 +1004,17 @@ function openPlaysDialog(gameId) {
     return plays.length % lineup.length;
   }
   function renderOffenseTab() {
+    const tabEl = document.getElementById('tab-offense');
     if (lineup.length === 0) {
-      document.getElementById('tab-offense').innerHTML = `
-        <div class="empty">先に「打順」タブで打順を設定してください。</div>
-      `;
+      tabEl.innerHTML = '<div class="empty">先に「打順」タブで打順を設定してください。</div>';
       return;
     }
     const inning = currentInning();
     const outs = outsInInning(plays, inning);
     const inningRuns = runsInInning(plays, inning);
     const batterIdx = currentBatterIdx();
-    const batterId = lineup[batterIdx];
+    const entry = lineup[batterIdx];
+    const batterId = entry.memberId;
     const batter = memberById(batterId);
 
     const resultButtons = RESULT_TYPES.map((r) => `
@@ -994,12 +1034,13 @@ function openPlaysDialog(gameId) {
             <span class="play-inning">${p.inning}回</span>
             <span class="play-batter">${m ? (m.number != null ? `#${m.number} ` : '') + m.name : '?'}</span>
             <span class="play-result">${resultLabel(p.result)}${p.rbi > 0 ? ` <strong>(${p.rbi}打点)</strong>` : ''}</span>
+            <button type="button" class="play-edit-btn" data-play-edit="${realIdx}" aria-label="編集">編</button>
             <button type="button" class="play-del-btn" data-play-del="${realIdx}" aria-label="削除">×</button>
           </div>
         `;
       }).join('');
 
-    document.getElementById('tab-offense').innerHTML = `
+    tabEl.innerHTML = `
       <div class="play-state">
         <div class="play-state-row">
           <span class="play-state-label">${inning}回</span>
@@ -1014,7 +1055,7 @@ function openPlaysDialog(gameId) {
       </div>
       <div class="batter-info">
         <span style="font-size:.8rem;color:var(--color-text-muted)">打者</span>
-        <strong>${batterIdx + 1}番: ${batter ? (batter.number != null ? `<span class="num-badge">#${batter.number}</span> ` : '') + escapeHtml(batter.name) : '?'}</strong>
+        <strong>${batterIdx + 1}番: ${batter ? (batter.number != null ? `<span class="num-badge">#${batter.number}</span> ` : '') + escapeHtml(batter.name) : '?'}${entry.position ? ` <span style="font-size:.8rem;color:var(--color-text-muted);font-weight:normal">(${escapeHtml(entry.position)})</span>` : ''}</strong>
       </div>
       <div class="result-grid">${resultButtons}</div>
       <div class="rbi-controls">
@@ -1033,8 +1074,7 @@ function openPlaysDialog(gameId) {
       <div class="plays-list">${playsList}</div>
     `;
 
-    // wire up
-    document.querySelectorAll('.result-btn').forEach((btn) => {
+    tabEl.querySelectorAll('.result-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         const r = btn.dataset.result;
         pendingResult = pendingResult === r ? null : r;
@@ -1059,7 +1099,7 @@ function openPlaysDialog(gameId) {
       });
       pendingResult = null;
       pendingRBI = 0;
-      manualInning = null; // 確定後は自動計算に戻す
+      manualInning = null;
       renderOffenseTab();
     });
     document.getElementById('prev-inning').addEventListener('click', () => {
@@ -1071,7 +1111,7 @@ function openPlaysDialog(gameId) {
       manualInning = currentInning() + 1;
       renderOffenseTab();
     });
-    document.querySelectorAll('[data-play-del]').forEach((btn) => {
+    tabEl.querySelectorAll('[data-play-del]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const idx = Number(btn.dataset.playDel);
         const p = plays[idx];
@@ -1081,11 +1121,301 @@ function openPlaysDialog(gameId) {
         renderOffenseTab();
       });
     });
+    tabEl.querySelectorAll('[data-play-edit]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.dataset.playEdit);
+        openPlayEditPopup({
+          play: plays[idx],
+          isOffense: true,
+          onSave: (updated) => {
+            plays[idx] = updated;
+            renderOffenseTab();
+          },
+        });
+      });
+    });
+  }
+
+  // ----- 守備タブ -----
+  function currentDefInning() {
+    return manualDefInning != null ? manualDefInning : computeNextInning(oppPlays);
+  }
+  function renderDefenseTab() {
+    const tabEl = document.getElementById('tab-defense');
+    const inning = currentDefInning();
+    const outs = outsInInning(oppPlays, inning);
+    const inningRuns = runsInInning(oppPlays, inning);
+    const pitcher = currentPitcherId ? memberById(currentPitcherId) : null;
+
+    const resultButtons = RESULT_TYPES.map((r) => `
+      <button type="button" class="result-btn ${pendingDefResult === r.key ? 'active' : ''} ${isOut(r.key) ? 'is-out' : 'is-onbase'}" data-def-result="${r.key}">
+        ${r.label}
+      </button>
+    `).join('');
+
+    const recentPlays = [...oppPlays].reverse().slice(0, 30);
+    const playsList = oppPlays.length === 0
+      ? '<div class="card-meta" style="text-align:center;padding:12px">まだ打席が記録されていません</div>'
+      : recentPlays.map((p, idxRev) => {
+        const realIdx = oppPlays.length - 1 - idxRev;
+        const pm = p.pitcherId ? memberById(p.pitcherId) : null;
+        return `
+          <div class="play-row">
+            <span class="play-inning">${p.inning}回</span>
+            <span class="play-batter">${pm ? (pm.number != null ? `#${pm.number} ` : '') + pm.name : '<span style="color:var(--color-text-muted)">投手未設定</span>'}</span>
+            <span class="play-result">${resultLabel(p.result)}${p.rbi > 0 ? ` <strong>(${p.rbi}失点)</strong>` : ''}</span>
+            <button type="button" class="play-edit-btn" data-defplay-edit="${realIdx}" aria-label="編集">編</button>
+            <button type="button" class="play-del-btn" data-defplay-del="${realIdx}" aria-label="削除">×</button>
+          </div>
+        `;
+      }).join('');
+
+    tabEl.innerHTML = `
+      <div class="play-state">
+        <div class="play-state-row">
+          <span class="play-state-label">${inning}回</span>
+          <span class="play-state-out">アウト ${outs}/3</span>
+          <span class="play-state-runs" style="color:var(--color-danger)">失点 ${inningRuns}</span>
+        </div>
+        <div class="play-state-row" style="margin-top:6px">
+          <button type="button" class="btn btn-sm" id="def-prev-inning">前の回</button>
+          <button type="button" class="btn btn-sm" id="def-next-inning">次の回</button>
+          ${manualDefInning != null ? '<span style="font-size:.7rem;color:var(--color-warning);margin-left:8px">手動指定中</span>' : ''}
+        </div>
+      </div>
+      <div class="batter-info">
+        <span style="font-size:.8rem;color:var(--color-text-muted)">投手</span>
+        ${pitcher
+          ? `<strong>${pitcher.number != null ? `<span class="num-badge">#${pitcher.number}</span> ` : ''}${escapeHtml(pitcher.name)}</strong>`
+          : '<strong style="color:var(--color-warning)">未設定</strong>'}
+        <button type="button" class="btn btn-sm" id="change-pitcher" style="margin-left:auto">変更</button>
+      </div>
+      <p style="font-size:.75rem;color:var(--color-text-muted);margin:0 0 6px">
+        相手バッターの結果を入力すると、当チーム投手の成績が自動集計されます。
+      </p>
+      <div class="result-grid">${resultButtons}</div>
+      <div class="rbi-controls">
+        <span class="stat-label">失点（この打席で）</span>
+        <div class="stat-controls">
+          <button type="button" class="stat-btn" id="def-rbi-dec">−</button>
+          <span class="stat-value" id="def-rbi-display">${pendingDefRBI}</span>
+          <button type="button" class="stat-btn stat-btn-plus" id="def-rbi-inc">+</button>
+        </div>
+      </div>
+      <button type="button" class="btn btn-primary btn-block" id="confirm-def-pa" ${!pendingDefResult ? 'disabled' : ''}>
+        この打席を記録 ▶
+      </button>
+
+      <h5 style="margin:18px 0 6px;font-size:.85rem;color:var(--color-text-muted)">記録済みの打席 (${oppPlays.length})</h5>
+      <div class="plays-list">${playsList}</div>
+    `;
+
+    tabEl.querySelectorAll('.result-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const r = btn.dataset.defResult;
+        pendingDefResult = pendingDefResult === r ? null : r;
+        renderDefenseTab();
+      });
+    });
+    document.getElementById('def-rbi-dec').addEventListener('click', () => {
+      pendingDefRBI = Math.max(0, pendingDefRBI - 1);
+      document.getElementById('def-rbi-display').textContent = pendingDefRBI;
+    });
+    document.getElementById('def-rbi-inc').addEventListener('click', () => {
+      pendingDefRBI = Math.min(4, pendingDefRBI + 1);
+      document.getElementById('def-rbi-display').textContent = pendingDefRBI;
+    });
+    document.getElementById('confirm-def-pa').addEventListener('click', () => {
+      if (!pendingDefResult) return;
+      oppPlays.push({
+        inning: currentDefInning(),
+        result: pendingDefResult,
+        rbi: pendingDefRBI,
+        pitcherId: currentPitcherId || null,
+      });
+      pendingDefResult = null;
+      pendingDefRBI = 0;
+      manualDefInning = null;
+      renderDefenseTab();
+    });
+    document.getElementById('def-prev-inning').addEventListener('click', () => {
+      const cur = currentDefInning();
+      if (cur > 1) manualDefInning = cur - 1;
+      renderDefenseTab();
+    });
+    document.getElementById('def-next-inning').addEventListener('click', () => {
+      manualDefInning = currentDefInning() + 1;
+      renderDefenseTab();
+    });
+    document.getElementById('change-pitcher').addEventListener('click', () => {
+      openPitcherPicker((picked) => {
+        currentPitcherId = picked;
+        renderDefenseTab();
+      });
+    });
+    tabEl.querySelectorAll('[data-defplay-del]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.dataset.defplayDel);
+        const p = oppPlays[idx];
+        if (!confirm(`${p.inning}回 相手の打席（${resultLabel(p.result)}）を削除しますか？`)) return;
+        oppPlays.splice(idx, 1);
+        renderDefenseTab();
+      });
+    });
+    tabEl.querySelectorAll('[data-defplay-edit]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.dataset.defplayEdit);
+        openPlayEditPopup({
+          play: oppPlays[idx],
+          isOffense: false,
+          onSave: (updated) => {
+            oppPlays[idx] = updated;
+            renderDefenseTab();
+          },
+        });
+      });
+    });
+  }
+
+  // ----- 投手選択ポップアップ -----
+  function openPitcherPicker(onPick) {
+    const sortedMembers = [...membersState.members].sort((a, b) => {
+      const na = a.number ?? 999, nb = b.number ?? 999;
+      if (na !== nb) return na - nb;
+      return (a.name || '').localeCompare(b.name || '', 'ja');
+    });
+    const html = `
+      <div class="play-edit-popup-backdrop" id="pitcher-picker">
+        <div class="play-edit-popup">
+          <h4>投手を選択</h4>
+          <div class="member-pool" style="max-height:300px;overflow:auto;display:flex;flex-direction:column">
+            <button type="button" class="member-pool-btn ${!currentPitcherId ? 'active' : ''}" data-pick="">-- 投手なし --</button>
+            ${sortedMembers.map((m) => `
+              <button type="button" class="member-pool-btn ${m.id === currentPitcherId ? 'active' : ''}" data-pick="${m.id}">
+                ${m.number != null ? `<span class="num-badge">#${m.number}</span> ` : ''}${escapeHtml(m.name)}
+              </button>
+            `).join('')}
+          </div>
+          <div class="modal-actions" style="margin-top:12px">
+            <button type="button" class="btn btn-block" id="pitcher-picker-cancel">キャンセル</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+    const backdrop = document.getElementById('pitcher-picker');
+    backdrop.querySelectorAll('[data-pick]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        onPick(btn.dataset.pick || null);
+        backdrop.remove();
+      });
+    });
+    document.getElementById('pitcher-picker-cancel').addEventListener('click', () => backdrop.remove());
+  }
+
+  // ----- 打席編集ポップアップ -----
+  function openPlayEditPopup({ play, isOffense, onSave }) {
+    let editResult = play.result;
+    let editRBI = play.rbi || 0;
+    let editInning = play.inning;
+    let editBatterId = play.batterId;
+    let editPitcherId = play.pitcherId || null;
+
+    const memberOptions = (selected) =>
+      membersState.members.map((m) => `
+        <option value="${m.id}" ${m.id === selected ? 'selected' : ''}>
+          ${m.number != null ? `#${m.number} ` : ''}${escapeHtml(m.name)}
+        </option>
+      `).join('');
+
+    const html = `
+      <div class="play-edit-popup-backdrop" id="play-edit-backdrop">
+        <div class="play-edit-popup">
+          <h4>${isOffense ? '打席を編集' : '相手打席を編集'}</h4>
+          <div class="field" style="display:flex;align-items:center;gap:8px">
+            <label class="field-label" style="margin:0;min-width:60px">イニング</label>
+            <input class="field-input" type="number" min="1" id="edit-inning" value="${editInning}" style="max-width:80px">
+            <span style="font-size:.85rem;color:var(--color-text-muted)">回</span>
+          </div>
+          ${isOffense ? `
+            <div class="field">
+              <label class="field-label">打者</label>
+              <select class="field-select" id="edit-batter">
+                ${memberOptions(editBatterId)}
+              </select>
+            </div>
+          ` : `
+            <div class="field">
+              <label class="field-label">投手</label>
+              <select class="field-select" id="edit-pitcher">
+                <option value="">-- なし --</option>
+                ${memberOptions(editPitcherId)}
+              </select>
+            </div>
+          `}
+          <div class="field">
+            <label class="field-label">結果</label>
+            <div class="result-grid">
+              ${RESULT_TYPES.map((r) => `
+                <button type="button" class="result-btn ${r.key === editResult ? 'active' : ''} ${isOut(r.key) ? 'is-out' : 'is-onbase'}" data-edit-result="${r.key}">
+                  ${r.label}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+          <div class="rbi-controls">
+            <span class="stat-label">${isOffense ? '打点' : '失点'}</span>
+            <div class="stat-controls">
+              <button type="button" class="stat-btn" id="edit-rbi-dec">−</button>
+              <span class="stat-value" id="edit-rbi-display">${editRBI}</span>
+              <button type="button" class="stat-btn stat-btn-plus" id="edit-rbi-inc">+</button>
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn" id="edit-cancel">キャンセル</button>
+            <button type="button" class="btn btn-primary" id="edit-save">更新</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+    const backdrop = document.getElementById('play-edit-backdrop');
+
+    backdrop.querySelectorAll('[data-edit-result]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        editResult = btn.dataset.editResult;
+        backdrop.querySelectorAll('[data-edit-result]').forEach((b) => b.classList.toggle('active', b.dataset.editResult === editResult));
+      });
+    });
+    document.getElementById('edit-rbi-dec').addEventListener('click', () => {
+      editRBI = Math.max(0, editRBI - 1);
+      document.getElementById('edit-rbi-display').textContent = editRBI;
+    });
+    document.getElementById('edit-rbi-inc').addEventListener('click', () => {
+      editRBI = Math.min(4, editRBI + 1);
+      document.getElementById('edit-rbi-display').textContent = editRBI;
+    });
+    document.getElementById('edit-cancel').addEventListener('click', () => backdrop.remove());
+    document.getElementById('edit-save').addEventListener('click', () => {
+      const inningRaw = Number(document.getElementById('edit-inning').value) || 1;
+      editInning = Math.max(1, inningRaw);
+      let updated;
+      if (isOffense) {
+        editBatterId = document.getElementById('edit-batter').value;
+        updated = { ...play, inning: editInning, batterId: editBatterId, result: editResult, rbi: editRBI };
+      } else {
+        editPitcherId = document.getElementById('edit-pitcher').value || null;
+        updated = { ...play, inning: editInning, pitcherId: editPitcherId, result: editResult, rbi: editRBI };
+      }
+      onSave(updated);
+      backdrop.remove();
+    });
   }
 
   setTab(activeTab);
   renderLineupTab();
   renderOffenseTab();
+  renderDefenseTab();
 
   document.getElementById('plays-cancel').addEventListener('click', () => modal.remove());
   document.getElementById('plays-save').addEventListener('click', async () => {
@@ -1093,21 +1423,21 @@ function openPlaysDialog(gameId) {
     saveBtn.disabled = true;
     saveBtn.textContent = '保存中...';
     try {
-      // ourScore/theirScore を再計算（打席があれば）
       let updatedGame = {
         ...game,
         ourLineup: lineup,
         ourPlays: plays,
+        oppPlays: oppPlays,
       };
-      if (plays.length > 0) {
-        const isHome = !!game.isHome;
-        let ourTotal = 0;
-        for (const p of plays) ourTotal += (p.rbi || 0);
-        // 相手の得点は既存のまま（Phase 2 で oppPlays から計算）
-        updatedGame.ourScore = ourTotal;
-        const theirScore = updatedGame.theirScore || 0;
-        updatedGame.result = ourTotal > theirScore ? 'win' : ourTotal < theirScore ? 'lose' : 'draw';
-        // innings はフィールドとしてはそのまま残す（手動入力分を保持）
+      // スコア再計算（plays/oppPlays から打点合計）
+      if (plays.length > 0 || oppPlays.length > 0) {
+        const ourTotal = plays.reduce((s, p) => s + (p.rbi || 0), 0);
+        const theirTotal = oppPlays.reduce((s, p) => s + (p.rbi || 0), 0);
+        if (plays.length > 0) updatedGame.ourScore = ourTotal;
+        if (oppPlays.length > 0) updatedGame.theirScore = theirTotal;
+        const our = updatedGame.ourScore || 0;
+        const their = updatedGame.theirScore || 0;
+        updatedGame.result = our > their ? 'win' : our < their ? 'lose' : 'draw';
       }
       const next = {
         ...gamesState,
