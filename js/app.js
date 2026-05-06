@@ -1,6 +1,48 @@
 import { CONFIG } from './config.js';
 import { isAuthed, logout, showLoginModal } from './auth.js';
 
+// LINE等のアプリ内ブラウザを検知してバナーを出す
+maybeShowInAppBrowserBanner();
+
+function maybeShowInAppBrowserBanner() {
+  if (sessionStorage.getItem('inapp_banner_dismissed') === '1') return;
+  const ua = navigator.userAgent || '';
+  // Line/, FBAN/FBAV (Facebook), Instagram, Twitter, X-app などのアプリ内ブラウザ
+  const isInApp = /Line\//i.test(ua)
+    || /FBAN|FBAV/i.test(ua)
+    || /Instagram/i.test(ua)
+    || /Twitter/i.test(ua);
+  if (!isInApp) return;
+
+  const isAndroid = /Android/i.test(ua);
+  const html = `
+    <div id="inapp-banner" style="position:sticky;top:0;z-index:60;background:#fff3cd;border-bottom:1px solid #f0d160;color:#5c4400;padding:10px 12px;font-size:.85rem;line-height:1.5">
+      <div style="display:flex;align-items:flex-start;gap:8px">
+        <div style="flex:1">
+          <strong>⚠ アプリ内ブラウザでは正しく動かない場合があります</strong><br>
+          ${isAndroid
+            ? '右上の <strong>︙</strong> メニューから「<strong>ブラウザで開く</strong>」を選んでください。'
+            : '右下/右上の <strong>共有/メニュー</strong> から「<strong>Safari/ブラウザで開く</strong>」を選んでください。'}
+        </div>
+        <button id="inapp-dismiss" style="background:transparent;border:none;font-size:18px;cursor:pointer;padding:0 4px;color:#5c4400">×</button>
+      </div>
+    </div>
+  `;
+  const inject = () => {
+    if (!document.body || document.getElementById('inapp-banner')) return;
+    document.body.insertAdjacentHTML('afterbegin', html);
+    document.getElementById('inapp-dismiss')?.addEventListener('click', () => {
+      sessionStorage.setItem('inapp_banner_dismissed', '1');
+      document.getElementById('inapp-banner')?.remove();
+    });
+  };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inject, { once: true });
+  } else {
+    inject();
+  }
+}
+
 export function renderHeader({ showLogout = true } = {}) {
   const header = document.getElementById('app-header');
   if (!header) return;

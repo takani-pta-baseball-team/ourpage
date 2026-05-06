@@ -143,6 +143,18 @@ git push
 - 問い合わせは `kazutake.asahi@gmail.com` 宛のメールで届きます（仮設定）
 - 専用 Gmail を作ったら `index.html` の `mailto:` リンクを書き換えてください
 
+### LINE で URL を共有する時のコツ
+
+LINE の内蔵ブラウザは Web Crypto API などの一部機能に制限があり、ログインや書き込みが正しく動かない場合があります。
+
+**LINE グループに URL を貼る時は、末尾に `?openExternalBrowser=1` をつけると、タップで自動的に標準ブラウザ（Safari/Chrome）で開きます:**
+
+```
+https://kazutake.github.io/takani-pta-baseball/?openExternalBrowser=1
+```
+
+このパラメータをつけていないリンクをタップした場合は、LINE 内ブラウザで開かれて警告バナーが表示されます。バナーの指示に従って「ブラウザで開く」を選んでもらえばOKです。
+
 ---
 
 ## ローカルでの確認
