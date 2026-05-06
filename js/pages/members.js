@@ -84,27 +84,49 @@ function aggregateStats(memberId) {
           else if (p.result === 'hbp') r.hitBatters++;
           else if (HIT_RESULTS.includes(p.result)) r.hitsAllowed++;
           else if (p.result === 'reachedOnError') r.errors++;
-          // otherOut/otherSafe は特別なカウントなし（投球結果としてはニュートラル）
+          // otherOut/otherSafe は特別なカウントなし
           r.runsAllowed = (r.runsAllowed || 0) + (p.rbi || 0);
         }
-      }
-      // 勝/負は手動入力から拾う（自動推定が難しいため）
-      if (ps && ps.pitching) {
-        if (ps.pitching.decision === 'win') r.wins++;
-        if (ps.pitching.decision === 'loss') r.losses++;
       }
     } else if (ps && ps.pitching) {
       const p = ps.pitching;
       const hasPitching = !!p.decision || PITCHING_KEYS.some((k) => (p[k] || 0) > 0);
       if (hasPitching) r.pitchGames++;
-      if (p.decision === 'win') r.wins++;
-      if (p.decision === 'loss') r.losses++;
       r.pitchStrikeouts += p.strikeouts || 0;
       r.walks += p.walks || 0;
       r.hitBatters += p.hitBatters || 0;
       r.errors += p.errors || 0;
       r.hitsAllowed += p.hitsAllowed || 0;
     }
+
+    // 勝/負を判定
+    // 1. 手動入力 (📊 手動成績の decision) を優先
+    // 2. なければ oppPlays から自動推定:
+    //    - 試合に勝敗がある (ourScore != theirScore)
+    //    - そのメンバーが「最も多くの相手打者と対戦した投手」
+    //    - 試合は finalized 済 OR データが揃っている場合
+    let decision = null;
+    if (ps && ps.pitching && ps.pitching.decision) {
+      decision = ps.pitching.decision;
+    }
+    if (!decision && game.oppPlays && game.oppPlays.length > 0) {
+      const pitcherCounts = {};
+      for (const p of game.oppPlays) {
+        if (p.pitcherId) {
+          pitcherCounts[p.pitcherId] = (pitcherCounts[p.pitcherId] || 0) + 1;
+        }
+      }
+      const sorted = Object.entries(pitcherCounts).sort((a, b) => b[1] - a[1]);
+      const topPitcherId = sorted.length > 0 ? sorted[0][0] : null;
+      if (topPitcherId === memberId) {
+        const our = game.ourScore || 0;
+        const their = game.theirScore || 0;
+        if (our > their) decision = 'win';
+        else if (our < their) decision = 'loss';
+      }
+    }
+    if (decision === 'win') r.wins++;
+    if (decision === 'loss') r.losses++;
   }
   if (r.runsAllowed === undefined) r.runsAllowed = 0;
   r.hits = r.singles + r.doubles + r.triples + r.homeRuns;
