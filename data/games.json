@@ -191,6 +191,12 @@
           "result": "groundOut",
           "rbi": 0,
           "pitcherId": "m_motkwoito899"
+        },
+        {
+          "inning": 4,
+          "result": "strikeout",
+          "rbi": 0,
+          "pitcherId": "m_motkwoito899"
         }
       ],
       "result": "draw"
