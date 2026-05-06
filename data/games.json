@@ -137,6 +137,12 @@
           "result": "flyOut",
           "rbi": 0,
           "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 2,
+          "result": "otherOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
         }
       ],
       "result": "draw"
