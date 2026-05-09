@@ -110,12 +110,6 @@
         },
         {
           "inning": 5,
-          "batterId": "m_motkv4fnrkmz",
-          "result": "flyOut",
-          "rbi": 0
-        },
-        {
-          "inning": 5,
           "batterId": "m_motkvjfh8tbi",
           "result": "groundOut",
           "rbi": 0
