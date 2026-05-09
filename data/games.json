@@ -53,21 +53,8 @@
           "position": "二塁手"
         }
       ],
-      "ourPlays": [
-        {
-          "inning": 7,
-          "batterId": "m_motkv4fnrkmz",
-          "result": "walk",
-          "rbi": 0
-        }
-      ],
+      "ourPlays": [],
       "oppPlays": [
-        {
-          "inning": 1,
-          "result": "flyOut",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
         {
           "inning": 1,
           "result": "groundOut",
