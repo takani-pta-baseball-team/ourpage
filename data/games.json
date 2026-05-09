@@ -103,20 +103,7 @@
           "rbi": 0
         }
       ],
-      "oppPlays": [
-        {
-          "inning": 1,
-          "result": "groundOut",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
-        {
-          "inning": 1,
-          "result": "groundOut",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        }
-      ],
+      "oppPlays": [],
       "result": "draw",
       "finalized": false
     }
