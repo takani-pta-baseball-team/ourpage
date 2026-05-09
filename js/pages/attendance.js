@@ -91,9 +91,8 @@ function render() {
 
 function renderEventCard(ev, isPast) {
   const att = attendanceState.attendance[ev.id] || {};
+  // 出欠リストは名前順で表示
   const members = [...membersState.members].sort((a, b) => {
-    const na = a.number ?? 999, nb = b.number ?? 999;
-    if (na !== nb) return na - nb;
     return (a.name || '').localeCompare(b.name || '', 'ja');
   });
 
