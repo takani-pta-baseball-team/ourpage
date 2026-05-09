@@ -68,12 +68,6 @@
         },
         {
           "inning": 5,
-          "batterId": "m_motkvjfh8tbi",
-          "result": "groundOut",
-          "rbi": 0
-        },
-        {
-          "inning": 5,
           "batterId": "m_motkyugdfake",
           "result": "strikeout",
           "rbi": 0
