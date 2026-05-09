@@ -123,12 +123,6 @@
         },
         {
           "inning": 5,
-          "result": "double",
-          "rbi": 0,
-          "pitcherId": "m_motkwoito899"
-        },
-        {
-          "inning": 5,
           "result": "otherOut",
           "rbi": 0,
           "pitcherId": "m_motkwoito899"
