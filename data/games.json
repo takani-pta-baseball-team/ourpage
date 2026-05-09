@@ -56,12 +56,6 @@
       "ourPlays": [
         {
           "inning": 1,
-          "batterId": "m_motkvdpsv10y",
-          "result": "flyOut",
-          "rbi": 0
-        },
-        {
-          "inning": 1,
           "batterId": "m_motkv9ascdpx",
           "result": "groundOut",
           "rbi": 0
