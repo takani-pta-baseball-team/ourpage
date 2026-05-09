@@ -6,7 +6,7 @@
       "opponent": "桃一",
       "ourScore": 0,
       "theirScore": 0,
-      "isHome": false,
+      "isHome": true,
       "innings": [],
       "location": "石神井公園A",
       "mvpId": "m_motkwoito899",
