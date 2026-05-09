@@ -155,7 +155,7 @@ const SORT_OPTIONS = [
   { key: 'pitchK_desc', label: '奪三振（多い順）', cmp: (a, b) => b._stats.pitchStrikeouts - a._stats.pitchStrikeouts, highlight: 'pitchK' },
 ];
 
-let currentSortKey = localStorage.getItem('members_sort_key') || 'number_asc';
+let currentSortKey = localStorage.getItem('members_sort_key') || 'name_asc';
 
 function getCurrentSortOption() {
   return SORT_OPTIONS.find((o) => o.key === currentSortKey) || SORT_OPTIONS[0];
