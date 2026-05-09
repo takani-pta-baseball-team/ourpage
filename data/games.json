@@ -95,6 +95,12 @@
           "batterId": "m_motkxo2u89qy",
           "result": "reachedOnError",
           "rbi": 0
+        },
+        {
+          "inning": 2,
+          "batterId": "m_motkwoito899",
+          "result": "flyOut",
+          "rbi": 0
         }
       ],
       "oppPlays": [
