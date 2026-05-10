@@ -131,6 +131,12 @@
           "batterId": "m_motkv4fnrkmz",
           "result": "single",
           "rbi": 0
+        },
+        {
+          "inning": 3,
+          "batterId": "m_motkvjfh8tbi",
+          "result": "walk",
+          "rbi": 0
         }
       ],
       "oppPlays": [
