@@ -101,6 +101,12 @@
           "batterId": "m_motkwoito899",
           "result": "strikeout",
           "rbi": 0
+        },
+        {
+          "inning": 2,
+          "batterId": "m_motkwzcfqnxm",
+          "result": "hbp",
+          "rbi": 0
         }
       ],
       "oppPlays": [
