@@ -5,7 +5,7 @@
       "date": "2026-05-10",
       "opponent": "桃一",
       "ourScore": 1,
-      "theirScore": 4,
+      "theirScore": 5,
       "isHome": false,
       "innings": [],
       "location": "石神井公園A",
@@ -192,6 +192,12 @@
           "inning": 2,
           "result": "single",
           "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 2,
+          "result": "reachedOnError",
+          "rbi": 1,
           "pitcherId": "m_motkvjfh8tbi"
         }
       ],
