@@ -59,6 +59,12 @@
           "batterId": "m_moth46wbgufq",
           "result": "walk",
           "rbi": 0
+        },
+        {
+          "inning": 1,
+          "batterId": "m_motkvdpsv10y",
+          "result": "otherOut",
+          "rbi": 0
         }
       ],
       "oppPlays": [],
