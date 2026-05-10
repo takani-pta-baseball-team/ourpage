@@ -14,7 +14,20 @@ export const CONFIG = {
     attendance: 'data/attendance.json',
   },
 
-  POSITIONS: ['投手', '捕手', '一塁手', '二塁手', '三塁手', '遊撃手', '左翼手', '中堅手', '右翼手', '指名打者', '控え'],
+  POSITIONS: [
+    '1 ピッチャー',
+    '2 キャッチャー',
+    '3 ファースト',
+    '4 セカンド',
+    '5 サード',
+    '6 ショート',
+    '7 レフト',
+    '8 センター',
+    '9 ライト',
+    'DH（指名打者）',
+    '控え',
+  ],
+  PITCHER_POSITION: '1 ピッチャー',
   ATTENDANCE_STATUSES: [
     { value: 'yes', label: '○', meaning: '出席' },
     { value: 'maybe', label: '△', meaning: '未定' },

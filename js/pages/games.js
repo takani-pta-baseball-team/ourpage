@@ -655,10 +655,13 @@ function openPlaysDialog(gameId) {
   let defenseEntryCollapsed = false;
   const memberById = (id) => membersState.members.find((m) => m.id === id);
 
+  // 投手ポジションの判定（旧データの '投手' も互換維持）
+  const isPitcherPosition = (pos) => pos === CONFIG.PITCHER_POSITION || pos === '投手';
+
   // 「投手」ポジションの選手を守備投手として自動判定
-  // 居なければ最終 oppPlay の投手にフォールバック（旧データ互換）
+  // 居なければ最終 oppPlay の投手にフォールバック
   function getDefensivePitcher() {
-    const pitcherEntry = lineup.find((e) => e.position === '投手');
+    const pitcherEntry = lineup.find((e) => isPitcherPosition(e.position));
     if (pitcherEntry) return pitcherEntry.memberId;
     if (oppPlays.length > 0) {
       const last = oppPlays[oppPlays.length - 1];
@@ -669,7 +672,7 @@ function openPlaysDialog(gameId) {
 
   // 投手交代: 新しい投手を立てる。打順内の選手なら入れ替え、外ならスタメンと入れ替え。
   function changePitcher(newMemberId) {
-    const oldPitcherIdx = lineup.findIndex((e) => e.position === '投手');
+    const oldPitcherIdx = lineup.findIndex((e) => isPitcherPosition(e.position));
     if (!newMemberId) {
       if (oldPitcherIdx !== -1) lineup[oldPitcherIdx].position = '';
       return;
@@ -678,18 +681,18 @@ function openPlaysDialog(gameId) {
     if (newPlayerIdx === -1) {
       // 打順未登録の選手 → 旧投手と入れ替え（ベンチの選手が登板）
       if (oldPitcherIdx !== -1) {
-        lineup[oldPitcherIdx] = { memberId: newMemberId, position: '投手' };
+        lineup[oldPitcherIdx] = { memberId: newMemberId, position: CONFIG.PITCHER_POSITION };
       } else {
-        lineup.push({ memberId: newMemberId, position: '投手' });
+        lineup.push({ memberId: newMemberId, position: CONFIG.PITCHER_POSITION });
       }
     } else {
       // 打順内の選手 → ポジションを入れ替え（守備位置の変更）
       if (oldPitcherIdx !== -1 && oldPitcherIdx !== newPlayerIdx) {
         const newPlayerOldPos = lineup[newPlayerIdx].position;
         lineup[oldPitcherIdx].position = newPlayerOldPos || '';
-        lineup[newPlayerIdx].position = '投手';
+        lineup[newPlayerIdx].position = CONFIG.PITCHER_POSITION;
       } else {
-        lineup[newPlayerIdx].position = '投手';
+        lineup[newPlayerIdx].position = CONFIG.PITCHER_POSITION;
       }
     }
   }
@@ -881,9 +884,9 @@ function openPlaysDialog(gameId) {
         const i = Number(sel.dataset.posSelect);
         const newPos = sel.value;
         // 「投手」を選んだ場合、ほかの投手は自動で外す（同時に2人投手は不可）
-        if (newPos === '投手') {
+        if (isPitcherPosition(newPos)) {
           lineup.forEach((e, idx) => {
-            if (idx !== i && e.position === '投手') e.position = '';
+            if (idx !== i && isPitcherPosition(e.position)) e.position = '';
           });
         }
         lineup[i].position = newPos;
