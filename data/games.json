@@ -71,6 +71,12 @@
           "batterId": "m_motkv9ascdpx",
           "result": "otherOut",
           "rbi": 1
+        },
+        {
+          "inning": 1,
+          "batterId": "m_motkv4fnrkmz",
+          "result": "walk",
+          "rbi": 0
         }
       ],
       "oppPlays": [],
