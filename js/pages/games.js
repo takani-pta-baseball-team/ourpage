@@ -639,7 +639,22 @@ function openPlaysDialog(gameId) {
 
   let lineup = normalizeLineup(game.ourLineup);
   let plays = (game.ourPlays || []).map((p) => ({ ...p }));
-  let oppPlays = (game.oppPlays || []).map((p) => ({ ...p }));
+
+  // 相手打順: ニックネーム配列。長さが打順サイズ。デフォルト9名。
+  const DEFAULT_OPP_LINEUP_SIZE = 9;
+  let oppBatters = Array.isArray(game.oppBatters) && game.oppBatters.length > 0
+    ? [...game.oppBatters]
+    : Array(DEFAULT_OPP_LINEUP_SIZE).fill('');
+
+  // 既存oppPlaysに oppBatterIdx が無い場合は配列順から補完（旧データ互換）
+  let oppPlays = (game.oppPlays || []).map((p, i) => {
+    const next = { ...p };
+    if (typeof next.oppBatterIdx !== 'number') {
+      next.oppBatterIdx = i % oppBatters.length;
+    }
+    return next;
+  });
+
   let isHome = !!game.isHome;
   let activeTab = lineup.length === 0 ? 'lineup' : 'offense';
 
@@ -652,8 +667,23 @@ function openPlaysDialog(gameId) {
   let pendingDefResult = null;
   let pendingDefRBI = 0;
   let manualDefInning = null;
+  let manualOppBatterIdx = null; // 相手打者の手動指定（前/次の打者ボタン）
   let defenseEntryCollapsed = false;
   const memberById = (id) => membersState.members.find((m) => m.id === id);
+
+  // 次の相手打者idx（自動算出）
+  function nextOppBatterIdx() {
+    if (manualOppBatterIdx !== null) return manualOppBatterIdx;
+    if (oppPlays.length === 0) return 0;
+    const last = oppPlays[oppPlays.length - 1];
+    return ((last.oppBatterIdx ?? -1) + 1) % oppBatters.length;
+  }
+  // 相手打者の表示文字列
+  function oppBatterLabel(idx) {
+    const num = idx + 1;
+    const nick = (oppBatters[idx] || '').trim();
+    return nick ? `${num}番 ${nick}` : `${num}番`;
+  }
 
   // 投手ポジションの判定（旧データの '投手' も互換維持）
   const isPitcherPosition = (pos) => pos === CONFIG.PITCHER_POSITION || pos === '投手';
@@ -1187,16 +1217,18 @@ function openPlaysDialog(gameId) {
       </button>
     `).join('');
 
+    const curOppIdx = nextOppBatterIdx();
     const recentPlays = [...oppPlays].reverse().slice(0, 30);
     const playsList = oppPlays.length === 0
       ? '<div class="card-meta" style="text-align:center;padding:12px">まだ打席が記録されていません</div>'
       : recentPlays.map((p, idxRev) => {
         const realIdx = oppPlays.length - 1 - idxRev;
         const pm = p.pitcherId ? memberById(p.pitcherId) : null;
+        const batterStr = typeof p.oppBatterIdx === 'number' ? oppBatterLabel(p.oppBatterIdx) : '打順?';
         return `
           <div class="play-row">
             <span class="play-inning">${p.inning}回</span>
-            <span class="play-batter">${pm ? (pm.number != null ? `#${pm.number} ` : '') + pm.name : '<span style="color:var(--color-text-muted)">投手未設定</span>'}</span>
+            <span class="play-batter">${escapeHtml(batterStr)}<span style="font-size:.7rem;color:var(--color-text-muted);margin-left:6px">vs ${pm ? escapeHtml(pm.name) : '?'}</span></span>
             <span class="play-result">${resultLabel(p.result)}${p.rbi > 0 ? ` <strong>(${p.rbi}失点)</strong>` : ''}</span>
             <button type="button" class="play-edit-btn" data-defplay-edit="${realIdx}" aria-label="編集">編</button>
             <button type="button" class="play-del-btn" data-defplay-del="${realIdx}" aria-label="削除">×</button>
@@ -1227,6 +1259,14 @@ function openPlaysDialog(gameId) {
             ? `<strong>${pitcher.number != null ? `<span class="num-badge">#${pitcher.number}</span> ` : ''}${escapeHtml(pitcher.name)}</strong>`
             : '<strong style="color:var(--color-warning)">未設定</strong>'}
           <button type="button" class="btn btn-sm" id="change-pitcher" style="margin-left:auto">変更</button>
+        </div>
+        <div class="batter-info" style="background:#fff8f0">
+          <span style="font-size:.8rem;color:var(--color-text-muted)">相手打者</span>
+          <strong>${escapeHtml(oppBatterLabel(curOppIdx))}</strong>
+          ${manualOppBatterIdx !== null ? '<span style="font-size:.7rem;color:var(--color-warning);margin-left:4px">手動</span>' : ''}
+          <button type="button" class="btn btn-sm" id="opp-prev-batter" style="margin-left:auto">◀</button>
+          <button type="button" class="btn btn-sm" id="opp-next-batter">▶</button>
+          <button type="button" class="btn btn-sm" id="opp-lineup-edit" title="打順・ニックネーム編集">✏️</button>
         </div>
         <div class="result-grid">${resultButtons}</div>
         <div class="entry-bottom-bar">
@@ -1271,15 +1311,18 @@ function openPlaysDialog(gameId) {
     document.getElementById('confirm-def-pa').addEventListener('click', async () => {
       if (!pendingDefResult) return;
       const inningRecorded = currentDefInning();
+      const oppBatterIdxRecorded = nextOppBatterIdx();
       oppPlays.push({
         inning: inningRecorded,
         result: pendingDefResult,
         rbi: pendingDefRBI,
         pitcherId: getDefensivePitcher() || null,
+        oppBatterIdx: oppBatterIdxRecorded,
       });
       pendingDefResult = null;
       pendingDefRBI = 0;
       manualDefInning = null;
+      manualOppBatterIdx = null;
       try {
         await savePlays({ silent: true });
       } catch { return; }
@@ -1313,6 +1356,19 @@ function openPlaysDialog(gameId) {
         const newPitcher = picked ? memberById(picked) : null;
         await autoSave({ message: newPitcher ? `投手を ${newPitcher.name} に変更` : '投手なしに変更' });
       });
+    });
+    document.getElementById('opp-prev-batter').addEventListener('click', () => {
+      const cur = nextOppBatterIdx();
+      manualOppBatterIdx = (cur - 1 + oppBatters.length) % oppBatters.length;
+      renderDefenseTab();
+    });
+    document.getElementById('opp-next-batter').addEventListener('click', () => {
+      const cur = nextOppBatterIdx();
+      manualOppBatterIdx = (cur + 1) % oppBatters.length;
+      renderDefenseTab();
+    });
+    document.getElementById('opp-lineup-edit').addEventListener('click', () => {
+      openOppLineupEditor();
     });
     tabEl.querySelectorAll('[data-defplay-del]').forEach((btn) => {
       btn.addEventListener('click', async () => {
@@ -1380,6 +1436,95 @@ function openPlaysDialog(gameId) {
     document.getElementById('pitcher-picker-cancel').addEventListener('click', () => backdrop.remove());
   }
 
+  // ----- 相手打順 / ニックネーム編集ポップアップ -----
+  function openOppLineupEditor() {
+    let editing = [...oppBatters];
+    function rowsHtml() {
+      return editing.map((nick, i) => `
+        <div class="field" style="display:flex;align-items:center;gap:8px;margin:4px 0">
+          <span style="min-width:36px;font-weight:600">${i + 1}番</span>
+          <input class="field-input" type="text" data-opp-nick="${i}" value="${escapeHtml(nick)}" placeholder="ニックネーム（任意）" style="flex:1">
+          ${editing.length > 9 ? `<button type="button" class="btn btn-sm" data-opp-remove="${i}" title="この打順を削除">×</button>` : ''}
+        </div>
+      `).join('');
+    }
+    const html = `
+      <div class="play-edit-popup-backdrop" id="opp-lineup-editor">
+        <div class="play-edit-popup">
+          <h4>相手打順 / ニックネーム編集</h4>
+          <p style="font-size:.75rem;color:var(--color-text-muted);margin:0 0 8px">
+            ニックネームは任意です。打順は10番目以降も追加できます。
+          </p>
+          <div id="opp-lineup-rows" style="max-height:50vh;overflow:auto">${rowsHtml()}</div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button type="button" class="btn btn-sm" id="opp-add-row">＋ 打順を追加</button>
+          </div>
+          <div class="modal-actions" style="margin-top:12px">
+            <button type="button" class="btn" id="opp-edit-cancel">キャンセル</button>
+            <button type="button" class="btn btn-primary" id="opp-edit-save">保存</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+    const backdrop = document.getElementById('opp-lineup-editor');
+    const rowsEl = document.getElementById('opp-lineup-rows');
+
+    function syncFromInputs() {
+      backdrop.querySelectorAll('[data-opp-nick]').forEach((el) => {
+        const i = Number(el.dataset.oppNick);
+        editing[i] = el.value;
+      });
+    }
+    function rerender() {
+      rowsEl.innerHTML = rowsHtml();
+      bindRowHandlers();
+    }
+    function bindRowHandlers() {
+      backdrop.querySelectorAll('[data-opp-remove]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          syncFromInputs();
+          const i = Number(btn.dataset.oppRemove);
+          // 既にこの打順idxを使っている記録があるなら削除不可
+          const used = oppPlays.some((p) => p.oppBatterIdx === i);
+          if (used) {
+            showToast(`${i + 1}番は既に打席記録があるため削除できません`, 'error');
+            return;
+          }
+          editing.splice(i, 1);
+          // 削除位置以降のidxを使っている記録を1つ前に詰める（保存時に反映）
+          rerender();
+        });
+      });
+    }
+    bindRowHandlers();
+
+    document.getElementById('opp-add-row').addEventListener('click', () => {
+      syncFromInputs();
+      editing.push('');
+      rerender();
+    });
+    document.getElementById('opp-edit-cancel').addEventListener('click', () => backdrop.remove());
+    document.getElementById('opp-edit-save').addEventListener('click', async () => {
+      syncFromInputs();
+      // 削除によって長さが変わる場合: oppPlays の oppBatterIdx を再マップ
+      if (editing.length < oppBatters.length) {
+        // 既存の打席は削除しない仕様なので、長さが減ったら超過idxを末尾に丸める
+        oppPlays = oppPlays.map((p) => {
+          if (typeof p.oppBatterIdx === 'number' && p.oppBatterIdx >= editing.length) {
+            return { ...p, oppBatterIdx: editing.length - 1 };
+          }
+          return p;
+        });
+      }
+      oppBatters = editing;
+      manualOppBatterIdx = null;
+      backdrop.remove();
+      renderDefenseTab();
+      await autoSave({ message: '相手打順を保存しました' });
+    });
+  }
+
   // ----- 打席編集ポップアップ -----
   function openPlayEditPopup({ play, isOffense, onSave }) {
     let editResult = play.result;
@@ -1387,6 +1532,7 @@ function openPlaysDialog(gameId) {
     let editInning = play.inning;
     let editBatterId = play.batterId;
     let editPitcherId = play.pitcherId || null;
+    let editOppBatterIdx = typeof play.oppBatterIdx === 'number' ? play.oppBatterIdx : 0;
 
     const memberOptions = (selected) =>
       membersState.members.map((m) => `
@@ -1417,6 +1563,14 @@ function openPlaysDialog(gameId) {
               <select class="field-select" id="edit-pitcher">
                 <option value="">-- なし --</option>
                 ${memberOptions(editPitcherId)}
+              </select>
+            </div>
+            <div class="field">
+              <label class="field-label">相手打者</label>
+              <select class="field-select" id="edit-opp-batter">
+                ${oppBatters.map((_, i) => `
+                  <option value="${i}" ${i === editOppBatterIdx ? 'selected' : ''}>${escapeHtml(oppBatterLabel(i))}</option>
+                `).join('')}
               </select>
             </div>
           `}
@@ -1472,7 +1626,8 @@ function openPlaysDialog(gameId) {
         updated = { ...play, inning: editInning, batterId: editBatterId, result: editResult, rbi: editRBI };
       } else {
         editPitcherId = document.getElementById('edit-pitcher').value || null;
-        updated = { ...play, inning: editInning, pitcherId: editPitcherId, result: editResult, rbi: editRBI };
+        editOppBatterIdx = Number(document.getElementById('edit-opp-batter').value) || 0;
+        updated = { ...play, inning: editInning, pitcherId: editPitcherId, oppBatterIdx: editOppBatterIdx, result: editResult, rbi: editRBI };
       }
       onSave(updated);
       backdrop.remove();
@@ -1495,6 +1650,7 @@ function openPlaysDialog(gameId) {
         ourLineup: lineup,
         ourPlays: plays,
         oppPlays: oppPlays,
+        oppBatters: oppBatters,
         isHome,
       };
       if (plays.length > 0 || oppPlays.length > 0) {
