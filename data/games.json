@@ -85,7 +85,14 @@
           "rbi": 0
         }
       ],
-      "oppPlays": [],
+      "oppPlays": [
+        {
+          "inning": 1,
+          "result": "single",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        }
+      ],
       "result": "win",
       "finalized": false
     }
