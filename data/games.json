@@ -89,6 +89,12 @@
           "batterId": "m_motkyugdfake",
           "result": "walk",
           "rbi": 0
+        },
+        {
+          "inning": 2,
+          "batterId": "m_motkxo2u89qy",
+          "result": "otherOut",
+          "rbi": 0
         }
       ],
       "oppPlays": [
