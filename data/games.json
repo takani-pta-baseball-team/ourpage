@@ -316,7 +316,7 @@
         }
       ],
       "result": "lose",
-      "finalized": false
+      "finalized": true
     }
   ]
 }
